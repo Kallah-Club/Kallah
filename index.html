@@ -248,16 +248,45 @@ footer .script { font-size: 34px; }
 </footer>
 
 <script>
+// Waitlist sign-ups go to the Supabase "waitlist" table. This key is the public
+// (publishable) key: the table only lets visitors add an email, never read the list.
+var SUPABASE_URL = 'https://damndwwdymxtwpjyxnsx.supabase.co';
+var SUPABASE_KEY = 'sb_publishable_T4p_qWd7XMKdjyfgDvSuDg_J8z9ziWq';
+
 document.getElementById('waitlist').addEventListener('submit', function (e) {
   e.preventDefault();
+  var form = e.target;
   var email = document.getElementById('email');
   var note = document.getElementById('note');
+  var button = form.querySelector('button');
   if (!email.value || !email.checkValidity()) {
     note.textContent = 'Enter a valid email address, like name@example.com.';
     email.focus();
     return;
   }
-  note.textContent = 'This is a preview. Sign-ups will start working when the site goes live.';
+  button.disabled = true;
+  note.textContent = 'Adding you to the waitlist…';
+  fetch(SUPABASE_URL + '/rest/v1/waitlist', {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ email: email.value.trim() })
+  }).then(function (res) {
+    if (res.ok || res.status === 409) {
+      // 409 means this email is already on the list, which is fine.
+      note.textContent = 'You’re on the list! We’ll email you when enrollment opens.';
+      form.reset();
+    } else {
+      throw new Error('Status ' + res.status);
+    }
+  }).catch(function () {
+    note.textContent = 'Something went wrong. Please try again in a moment.';
+  }).finally(function () {
+    button.disabled = false;
+  });
 });
 </script>
 
