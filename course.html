@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>My Course · The Kallah Club</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600&family=Herr+Von+Muellerhoff&family=Inter:wght@400;500;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2716%27 fill=%27%23f7f4f0%27/%3E%3Cpath d=%27M16 5 27 16 16 27 5 16Z%27 fill=%27%23887289%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="bar"></div>
+<main id="app">
+  <div class="loading"><p class="script">The Kallah Club</p><p class="eyebrow dots">Opening your course</p></div>
+</main>
+<footer class="auth-foot"><div class="wrap app-foot">© 2026 The Kallah Club · With Rabbanit Rachel Benchimol</div></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi" crossorigin="anonymous"></script>
+<script src="preview.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var sb = KC.sb, h = KC.h, icon = KC.icon;
+  var app = document.getElementById('app');
+  var PART_WORDS = ['Part one', 'Part two', 'Part three', 'Part four', 'Part five', 'Part six', 'Part seven', 'Part eight'];
+  var state = { user: null, profile: null, lessons: [], progress: {}, announcements: [] };
+
+  function partWord(n) { return PART_WORDS[n - 1] || 'Part ' + n; }
+  function num(l) { return KC.pad2(l._n); }
+  function prog(id) { return state.progress[id] || null; }
+  function isDone(id) { var p = prog(id); return !!(p && p.completed_at); }
+  /* A lesson with no text and no video yet is shown as a locked "Coming soon" row. */
+  var ready = KC.hasContent;
+  function readyLessons() { return state.lessons.filter(ready); }
+  function stats() {
+    var list = readyLessons();
+    var total = list.length, done = list.filter(function (l) { return isDone(l.id); }).length;
+    return { total: total, done: done, pct: total ? (done / total) * 100 : 0, soon: state.lessons.length - total };
+  }
+  function parts() {
+    var map = {}, list = [];
+    state.lessons.forEach(function (l) {
+      if (!map[l.part]) { map[l.part] = { part: l.part, title: l.part_title, lessons: [] }; list.push(map[l.part]); }
+      map[l.part].lessons.push(l);
+    });
+    return list;
+  }
+  function statusDot(l) {
+    if (!ready(l)) return h('span', { class: 'status locked', title: 'Coming soon' }, icon('lock'), h('span', { class: 'sr' }, 'Coming soon'));
+    var p = prog(l.id);
+    var cls = p && p.completed_at ? 'done' : p ? 'started' : '';
+    var label = cls === 'done' ? 'Completed' : cls === 'started' ? 'Started' : 'Not started';
+    return h('span', { class: 'status ' + cls, title: label }, icon('check'), h('span', { class: 'sr' }, label));
+  }
+  /* The lesson to pick up: the most recently opened one that is not finished,
+     otherwise the first available lesson not yet completed. */
+  function continueLesson() {
+    var list = readyLessons();
+    var open = list.filter(function (l) { return prog(l.id) && !isDone(l.id); })
+      .sort(function (a, b) { return new Date(prog(b.id).last_viewed_at) - new Date(prog(a.id).last_viewed_at); });
+    if (open.length) return { lesson: open[0], resume: true };
+    var next = list.find(function (l) { return !isDone(l.id); });
+    return next ? { lesson: next, resume: false } : null;
+  }
+
+  /* ---------------------------------------------------------------- data */
+  async function load() {
+    state.user = await KC.requireUser();
+    var uid = state.user.id;
+    var res = await Promise.all([
+      KC.getProfile(state.user),
+      sb.from('lessons').select('id, part, part_title, position, title, summary, body, video_url, published').order('part').order('position').order('id'),
+      sb.from('lesson_progress').select('lesson_id, completed_at, last_viewed_at').eq('user_id', uid),
+      sb.from('announcements').select('id, title, body, created_at').eq('published', true).order('created_at', { ascending: false }).limit(5)
+    ]);
+    state.profile = res[0];
+    [res[1], res[2], res[3]].forEach(function (r) { if (r.error) throw r.error; });
+    // Teachers see drafts here too (marked), students only ever receive published lessons.
+    state.lessons = res[1].data.map(function (l, i) { l._n = i + 1; return l; });
+    state.progress = {};
+    res[2].data.forEach(function (p) { state.progress[p.lesson_id] = p; });
+    state.announcements = res[3].data;
+  }
+
+  /* Records that the lesson was opened. completed_at is deliberately left out of
+     the payload, so an existing completion (from another device or tab) is never
+     overwritten; a new row gets completed_at = null by default. */
+  async function touchLesson(lesson) {
+    var now = new Date().toISOString(), existing = prog(lesson.id);
+    state.progress[lesson.id] = { lesson_id: lesson.id, last_viewed_at: now, completed_at: existing ? existing.completed_at : null };
+    if (!lesson.published || !ready(lesson)) return; // drafts and empty lessons are not tracked
+    var r = await sb.from('lesson_progress').upsert({ user_id: state.user.id, lesson_id: lesson.id, last_viewed_at: now }, { onConflict: 'user_id,lesson_id', returning: 'minimal' });
+    if (r.error) console.warn(r.error);
+  }
+  async function setComplete(lesson, done) {
+    var row = { user_id: state.user.id, lesson_id: lesson.id, last_viewed_at: new Date().toISOString(), completed_at: done ? new Date().toISOString() : null };
+    var r = await sb.from('lesson_progress').upsert(row, { onConflict: 'user_id,lesson_id', returning: 'minimal' });
+    if (r.error) throw r.error;
+    state.progress[lesson.id] = { lesson_id: lesson.id, last_viewed_at: row.last_viewed_at, completed_at: row.completed_at };
+  }
+
+  /* ---------------------------------------------------------------- views */
+  function renderBar(active) {
+    var bar = document.getElementById('bar');
+    KC.clear(bar).appendChild(KC.topbar({ profile: state.profile, active: active }));
+  }
+
+  function viewHome() {
+    renderBar('course');
+    document.title = 'My Course · The Kallah Club';
+    var st = stats(), name = KC.firstName(state.profile), cont = continueLesson();
+    var allDone = st.total > 0 && st.done === st.total;
+    var chips = [];
+    var days = KC.daysUntil(state.profile.wedding_date);
+    if (days !== null && days > 0) chips.push(h('span', { class: 'chip' }, icon('heart'), days + (days === 1 ? ' day' : ' days') + ' until your wedding'));
+    else if (days === 0) chips.push(h('span', { class: 'chip' }, icon('heart'), 'Mazal tov! Today is your wedding day'));
+    else if (days === null) chips.push(h('a', { class: 'chip', href: 'course.html?view=profile', 'data-nav': '' }, icon('heart'), 'Add your wedding date'));
+    chips.push(h('span', { class: 'chip' }, icon('check'), st.total ? st.done + ' of ' + st.total + ' lessons complete' : 'Lessons open soon'));
+
+    var hello = h('section', { class: 'panel hello' },
+      h('div', null,
+        h('p', { class: 'script' }, name ? 'Welcome, ' + name : 'Welcome, kallah'),
+        h('h1', { class: 'display' }, 'Your kallah course'),
+        h('p', { class: 'lead' }, st.done === 0
+          ? 'Learn at your own pace. Each lesson builds on the last, and you can return to any of them whenever you like.'
+          : allDone && !st.soon ? 'You have completed every lesson. Come back to them whenever you need a reminder.'
+          : allDone ? 'You are all caught up. New lessons will appear here as soon as they are ready.'
+          : 'Beautiful progress. Pick up right where you left off.')),
+      KC.progressRing(st.pct),
+      h('div', { class: 'chips' }, chips));
+
+    var contCard;
+    if (cont) {
+      var l = cont.lesson;
+      contCard = h('a', { class: 'card continue', href: 'course.html?lesson=' + l.id, 'data-nav': '' },
+        h('span', { class: 'bignum' }, num(l)),
+        h('div', null,
+          h('p', { class: 'eyebrow' }, cont.resume ? 'Continue where you left off' : st.done ? 'Up next' : 'Start here'),
+          h('h3', null, l.title),
+          h('p', { class: 'small' }, partWord(l.part) + ' · ' + l.part_title),
+          h('span', { class: 'btn small' }, icon('play'), cont.resume ? 'Continue lesson' : 'Start lesson ' + num(l))));
+    } else if (allDone && !st.soon) {
+      contCard = h('div', { class: 'card soon' }, h('p', { class: 'script' }, 'Mazal tov'), h('p', null, 'You have completed the whole course. May you build a home full of blessing.'));
+    } else if (allDone) {
+      contCard = h('div', { class: 'card soon' }, h('p', { class: 'script' }, 'All caught up'), h('p', null, 'You have finished every lesson that is open so far. The next ones will appear here as soon as they are ready.'));
+    } else {
+      contCard = h('div', { class: 'card soon' }, h('p', { class: 'script' }, 'Coming soon'), h('p', null, 'Rabbanit Rachel is preparing your lessons. They will open here one by one as soon as they are ready.'));
+    }
+
+    var ann = h('section', { class: 'card' },
+      h('div', { class: 'side-title' }, icon('bell'), h('h2', { class: 'display' }, 'From Rachel')),
+      state.announcements.length
+        ? h('div', { class: 'ann-list' }, state.announcements.map(function (a) {
+            return h('article', { class: 'ann' }, h('time', { datetime: a.created_at }, KC.fmtDate(a.created_at)), h('h4', null, a.title), a.body ? h('p', null, a.body) : null);
+          }))
+        : h('p', { class: 'muted small' }, 'Messages and updates from your teacher will appear here.'));
+
+    var units = h('div', { class: 'units' }, parts().map(function (p) {
+      var avail = p.lessons.filter(ready);
+      var done = avail.filter(function (l) { return isDone(l.id); }).length;
+      return h('article', { class: 'panel unit' },
+        h('div', { class: 'unit-head' }, h('p', { class: 'script' }, partWord(p.part)), h('h3', { class: 'display' }, p.title || ''),
+          h('p', { class: 'unit-meta' }, avail.length ? done + ' / ' + avail.length + ' complete' : 'Coming soon')),
+        h('div', null, p.lessons.map(function (l) {
+          var inner = [
+            h('span', { class: 'num' }, num(l)),
+            h('div', null,
+              h('h4', null, l.title,
+                !l.published ? h('span', { class: 'tag draft' }, 'Draft') : null,
+                !ready(l) ? h('span', { class: 'tag soon' }, 'Coming soon') : null),
+              l.summary ? h('p', null, l.summary) : null),
+            statusDot(l)];
+          return ready(l)
+            ? h('a', { class: 'lrow', href: 'course.html?lesson=' + l.id, 'data-nav': '' }, inner)
+            : h('div', { class: 'lrow locked' }, inner);
+        })));
+    }));
+
+    KC.clear(app).appendChild(h('div', { class: 'wrap page' },
+      hello,
+      h('div', { class: 'home-grid' }, contCard, ann),
+      h('div', { class: 'section-head' }, h('p', { class: 'eyebrow' }, 'The course'), h('h2', { class: 'display' }, 'All lessons'), h('div', { class: 'rule', 'aria-hidden': 'true' }, icon('diamond'))),
+      units));
+  }
+
+  function outline(current) {
+    var st = stats();
+    var details = h('details', { open: window.innerWidth > 960 },
+      h('summary', null,
+        h('h2', { class: 'display' }, 'Course outline'),
+        h('div', { class: 'mini-progress' }, h('div', { class: 'bar' }, h('i', { style: 'width:' + st.pct.toFixed(1) + '%' })),
+          h('p', { class: 'small muted', style: 'margin-top:6px;text-align:center' }, st.done + ' of ' + st.total + ' complete')),
+        h('span', { class: 'more' }, 'Show all lessons')));
+    details.addEventListener('toggle', function () {
+      var m = details.querySelector('.more'); if (m) m.textContent = details.open ? 'Hide lessons' : 'Show all lessons';
+    });
+    if (details.open) details.querySelector('.more').textContent = 'Hide lessons';
+    parts().forEach(function (p) {
+      details.appendChild(h('p', { class: 'part' }, partWord(p.part) + ' · ' + (p.title || '')));
+      p.lessons.forEach(function (l) {
+        var kids = [statusDot(l), h('span', null, num(l) + '  ' + l.title)];
+        details.appendChild(ready(l)
+          ? h('a', { href: 'course.html?lesson=' + l.id, 'data-nav': '', class: l.id === current.id ? 'on' : null, 'aria-current': l.id === current.id ? 'page' : null }, kids)
+          : h('a', { class: 'is-soon' + (l.id === current.id ? ' on' : ''), 'aria-disabled': 'true', style: 'opacity:.65;cursor:default' }, kids));
+      });
+    });
+    return h('nav', { class: 'panel outline', 'aria-label': 'Course outline' }, details);
+  }
+
+  function viewLesson(id) {
+    var l = state.lessons.find(function (x) { return String(x.id) === String(id); });
+    if (!l) {
+      renderBar('course');
+      document.title = 'Lesson unavailable · The Kallah Club';
+      KC.clear(app).appendChild(h('div', { class: 'wrap page' }, h('div', { class: 'panel denied' },
+        h('p', { class: 'script' }, 'Not found'), h('h1', { class: 'display' }, 'Lesson unavailable'),
+        h('p', null, 'This lesson is not available yet. It may still be in preparation.'),
+        h('a', { class: 'btn', href: 'course.html', 'data-nav': '' }, 'Back to my course'))));
+      return;
+    }
+    // Previous / next only step through lessons that are open.
+    var list = readyLessons(), idx = list.indexOf(l);
+    var prev = idx > 0 ? list[idx - 1] : null, next = idx >= 0 ? list[idx + 1] : null;
+    renderBar('course');
+    document.title = l.title + ' · The Kallah Club';
+    var touching = touchLesson(l);
+
+    var body;
+    if (l.body && l.body.trim()) {
+      body = h('div', { class: 'prose' });
+      body.appendChild(KC.renderRich(l.body));
+    } else if (!l.video_url) {
+      body = h('div', { class: 'panel soon' }, h('p', { class: 'script' }, 'Coming soon'),
+        h('p', null, 'Rabbanit Rachel is preparing this lesson. You will find it here as soon as it is ready.'));
+    }
+
+    /* Primary action: "Complete & continue" (or "Complete course" on the last
+       lesson). Once complete it shows a quiet "Completed" status plus Undo. */
+    var actions = h('div', { class: 'lesson-actions' });
+    var busy = false;
+    function paintActions(focusSel) {
+      KC.clear(actions);
+      if (!ready(l)) {
+        actions.appendChild(h('a', { class: 'btn line', href: 'course.html', 'data-nav': '' }, icon('arrowL'), 'Back to course'));
+        return;
+      }
+      if (isDone(l.id)) {
+        actions.appendChild(h('span', { class: 'btn done', role: 'status' }, icon('check'), 'Completed'));
+        actions.appendChild(h('button', { class: 'linkbtn', type: 'button', id: 'undo-complete', onclick: undo }, 'Mark as not complete'));
+        if (next) actions.appendChild(h('a', { class: 'btn line', href: 'course.html?lesson=' + next.id, 'data-nav': '' }, 'Next lesson', icon('arrowR')));
+      } else {
+        actions.appendChild(h('button', { class: 'btn', type: 'button', id: 'complete', onclick: complete },
+          next ? 'Complete & continue' : 'Complete course', icon(next ? 'arrowR' : 'check')));
+      }
+      if (focusSel) { var f = actions.querySelector(focusSel); if (f) f.focus(); }
+    }
+    async function complete() {
+      if (busy) return;
+      if (!l.published) { KC.toast('This lesson is a draft, so progress is not saved.'); return; }
+      busy = true;
+      var btn = actions.querySelector('#complete');
+      if (btn) btn.setAttribute('aria-busy', 'true');
+      try {
+        await touching; // make sure the "opened" write cannot land after this one
+        await setComplete(l, true);
+        var st = stats();
+        KC.toast(st.done === st.total && !st.soon ? 'Mazal tov! You have completed the whole course.' : 'Lesson ' + num(l) + ' complete. Beautiful work!');
+        navigate(next ? 'course.html?lesson=' + next.id : 'course.html');
+      } catch (e) {
+        KC.toast(KC.friendlyError(e), 'err');
+        if (btn) btn.removeAttribute('aria-busy');
+      }
+      busy = false;
+    }
+    async function undo() {
+      if (busy) return;
+      busy = true;
+      try {
+        await touching;
+        await setComplete(l, false);
+        KC.toast('Marked as not complete.');
+        paintActions('#complete');
+        var side = document.querySelector('.outline');
+        if (side) side.replaceWith(outline(l));
+      } catch (e) { KC.toast(KC.friendlyError(e), 'err'); }
+      busy = false;
+    }
+    paintActions();
+
+    var main = h('article', null,
+      h('a', { class: 'back', href: 'course.html', 'data-nav': '' }, icon('arrowL'), 'All lessons'),
+      h('header', { class: 'lesson-head' },
+        h('span', { class: 'bignum', 'aria-hidden': 'true' }, num(l)),
+        h('div', null,
+          h('p', { class: 'eyebrow' }, partWord(l.part) + ' · ' + l.part_title, !l.published ? h('span', { class: 'tag draft', style: 'margin-left:10px' }, 'Draft') : null),
+          h('h1', { class: 'display', tabindex: '-1' }, h('span', { class: 'sr' }, 'Lesson ' + num(l) + ': '), l.title),
+          l.summary ? h('p', null, l.summary) : null)),
+      KC.videoEmbed(l.video_url),
+      body,
+      actions,
+      (prev || next) ? h('nav', { class: 'pager', 'aria-label': 'Lesson navigation' },
+        prev ? h('a', { href: 'course.html?lesson=' + prev.id, 'data-nav': '' }, h('span', null, 'Previous · ' + num(prev)), h('b', null, prev.title)) : null,
+        next ? h('a', { class: 'next', href: 'course.html?lesson=' + next.id, 'data-nav': '' }, h('span', null, 'Next · ' + num(next)), h('b', null, next.title)) : null) : null);
+
+    KC.clear(app).appendChild(h('div', { class: 'wrap page' }, h('div', { class: 'lesson-layout' }, main, outline(l))));
+  }
+
+  function viewProfile() {
+    renderBar('profile');
+    document.title = 'Profile · The Kallah Club';
+    var p = state.profile;
+    var name = h('input', { type: 'text', name: 'full_name', maxlength: '120', autocomplete: 'name', value: p.full_name || '' });
+    var date = h('input', { type: 'date', name: 'wedding_date', value: p.wedding_date || '' });
+    var email = h('input', { type: 'email', value: state.user.email || p.email || '', readonly: true, 'aria-readonly': 'true' });
+    var note = h('p', { class: 'note', role: 'status' });
+    var save = h('button', { class: 'btn', type: 'submit' }, 'Save changes');
+    var form = h('form', { class: 'form-grid', novalidate: true },
+      h('label', { class: 'field' }, h('span', null, 'Your name'), name),
+      h('div', { class: 'form-row' },
+        h('label', { class: 'field' }, h('span', null, 'Wedding date'), date, h('small', { class: 'hint' }, 'We use it for your countdown.')),
+        h('label', { class: 'field' }, h('span', null, 'Email'), email, h('small', { class: 'hint' }, 'Your log in email.'))),
+      h('div', { class: 'actions' }, save, note));
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      save.disabled = true; note.className = 'note'; note.textContent = 'Saving…';
+      var upd = { full_name: name.value.trim().slice(0, 120) || null, wedding_date: date.value || null };
+      var r = await sb.from('profiles').update(upd).eq('id', state.user.id).select('full_name, wedding_date').single();
+      save.disabled = false;
+      if (r.error) { note.className = 'note err'; note.textContent = KC.friendlyError(r.error); return; }
+      state.profile.full_name = r.data.full_name; state.profile.wedding_date = r.data.wedding_date;
+      note.className = 'note ok'; note.textContent = 'Saved.';
+      renderBar('profile');
+      KC.toast('Your profile has been updated.');
+    });
+
+    var pw = h('input', { type: 'password', autocomplete: 'new-password', minlength: '8' });
+    var pw2 = h('input', { type: 'password', autocomplete: 'new-password', minlength: '8' });
+    var pwNote = h('p', { class: 'note', role: 'status' });
+    var pwBtn = h('button', { class: 'btn line', type: 'submit' }, 'Update password');
+    var pwForm = h('form', { class: 'form-grid', novalidate: true },
+      h('div', { class: 'form-row' },
+        h('label', { class: 'field' }, h('span', null, 'New password'), pw),
+        h('label', { class: 'field' }, h('span', null, 'Confirm'), pw2)),
+      h('div', { class: 'actions' }, pwBtn, pwNote));
+    pwForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      pwNote.className = 'note err';
+      if (pw.value.length < 8) { pwNote.textContent = 'At least 8 characters, please.'; return; }
+      if (pw.value !== pw2.value) { pwNote.textContent = 'The two passwords do not match.'; return; }
+      pwBtn.disabled = true; pwNote.className = 'note'; pwNote.textContent = 'Saving…';
+      var r = await sb.auth.updateUser({ password: pw.value });
+      pwBtn.disabled = false;
+      if (r.error) { pwNote.className = 'note err'; pwNote.textContent = KC.friendlyError(r.error); return; }
+      pwForm.reset(); pwNote.className = 'note ok'; pwNote.textContent = 'Password updated.';
+    });
+
+    var st = stats();
+    KC.clear(app).appendChild(h('div', { class: 'wrap page' }, h('div', { class: 'profile-wrap' },
+      h('div', { class: 'page-title' }, h('p', { class: 'script' }, 'About you'), h('h1', { class: 'display' }, 'Your profile'), h('div', { class: 'rule', 'aria-hidden': 'true' }, icon('diamond'))),
+      h('section', { class: 'panel' }, form),
+      h('section', { class: 'panel' },
+        h('div', { class: 'side-title' }, icon('check'), h('h2', { class: 'display' }, 'Your progress')),
+        h('div', { class: 'bar' }, h('i', { style: 'width:' + st.pct.toFixed(1) + '%' })),
+        h('p', { class: 'small muted', style: 'margin-top:8px' }, st.done + ' of ' + st.total + ' lessons complete · Member since ' + KC.fmtDate(state.profile.created_at || state.user.created_at, { month: 'long', year: 'numeric' }))),
+      h('section', { class: 'panel' },
+        h('div', { class: 'side-title' }, icon('lock'), h('h2', { class: 'display' }, 'Password')),
+        pwForm),
+      h('div', { class: 'actions', style: 'justify-content:center' }, h('button', { class: 'btn line', type: 'button', onclick: KC.signOut }, 'Log out')))));
+  }
+
+  /* ---------------------------------------------------------------- router */
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  function focusHeading() {
+    var t = app.querySelector('h1');
+    if (!t) return;
+    t.setAttribute('tabindex', '-1');
+    try { t.focus({ preventScroll: true }); } catch (e) { t.focus(); }
+  }
+  function route() {
+    var q = new URLSearchParams(location.search);
+    if (q.get('lesson')) viewLesson(q.get('lesson'));
+    else if (q.get('view') === 'profile') viewProfile();
+    else viewHome();
+  }
+  function navigate(href) {
+    try { history.replaceState({ y: window.scrollY }, ''); } catch (e) {}
+    history.pushState({ y: 0 }, '', href);
+    route();
+    window.scrollTo(0, 0);
+    focusHeading();
+  }
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-nav]');
+    if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    navigate(a.getAttribute('href'));
+  });
+  window.addEventListener('popstate', function (e) {
+    route();
+    window.scrollTo(0, (e.state && e.state.y) || 0);
+    focusHeading();
+  });
+  sb.auth.onAuthStateChange(function (event) { if (event === 'SIGNED_OUT') location.replace('account.html'); });
+
+  load().then(function () { route(); window.scrollTo(0, 0); }).catch(function (err) {
+    console.error(err);
+    KC.clear(app).appendChild(h('div', { class: 'wrap page' }, h('div', { class: 'panel denied' },
+      h('p', { class: 'script' }, 'Oh dear'), h('h1', { class: 'display' }, 'Something went wrong'),
+      h('p', null, KC.friendlyError(err)),
+      h('button', { class: 'btn', type: 'button', onclick: function () { location.reload(); } }, 'Try again'))));
+  });
+})();
+</script>
+</body>
+</html>

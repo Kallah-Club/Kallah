@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Teacher Dashboard · The Kallah Club</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600&family=Herr+Von+Muellerhoff&family=Inter:wght@400;500;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2716%27 fill=%27%23f7f4f0%27/%3E%3Cpath d=%27M16 5 27 16 16 27 5 16Z%27 fill=%27%23887289%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="bar"></div>
+<main id="app">
+  <div class="loading"><p class="script">The Kallah Club</p><p class="eyebrow dots">Opening the dashboard</p></div>
+</main>
+<footer class="auth-foot"><div class="wrap app-foot">© 2026 The Kallah Club · With Rabbanit Rachel Benchimol</div></footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js" integrity="sha384-+VfUPEb0PdtChMwmBcBmykRMDd+v6D/oFmB3rZM/puCMDYcIvF968OimRh4KQY9a" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js" integrity="sha384-/TQbtLCAerC3jgaim+N78RZSDYV7ryeoBCVqTuzRrFec2akfBkHS7ACQ3PQhvMVi" crossorigin="anonymous"></script>
+<script src="preview.js"></script>
+<script src="app.js"></script>
+<script>
+/* The teacher dashboard. This page is public HTML, but every query below is
+   checked by Row Level Security in the database: only an account whose
+   profiles.role is 'admin' gets any student, waitlist or draft data back. */
+(function () {
+  'use strict';
+  var sb = KC.sb, h = KC.h, icon = KC.icon;
+  var app = document.getElementById('app');
+  var PART_WORDS = ['Part one', 'Part two', 'Part three', 'Part four', 'Part five', 'Part six', 'Part seven', 'Part eight'];
+  var S = { user: null, profile: null, profiles: [], progress: [], lessons: [], waitlist: [], announcements: [], tab: 'overview', editing: null };
+  var main, nav;
+  var dirty = false; // unsaved changes in the lesson editor
+
+  function partWord(n) { return PART_WORDS[n - 1] || 'Part ' + n; }
+  function students() { return S.profiles.filter(function (p) { return p.role !== 'admin'; }); }
+  function published() { return S.lessons.filter(function (l) { return l.published; }); }
+  /* Lessons students can actually open and complete: published, with text or video. */
+  function openLessons() { return published().filter(KC.hasContent); }
+  /* The number a student sees for this lesson (drafts have none). */
+  function studentNum(l) { var i = published().indexOf(l); return i < 0 ? '—' : KC.pad2(i + 1); }
+  function initials(p) { return ((p.full_name || p.email || '?').trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2) || '?').toUpperCase(); }
+  function studentStats(uid) {
+    var open = {}; openLessons().forEach(function (l) { open[l.id] = true; });
+    var rows = S.progress.filter(function (r) { return r.user_id === uid; });
+    var done = rows.filter(function (r) { return r.completed_at && open[r.lesson_id]; }).length;
+    var last = rows.reduce(function (m, r) { return !m || r.last_viewed_at > m ? r.last_viewed_at : m; }, null);
+    var total = openLessons().length;
+    return { done: done, total: total, pct: total ? done / total * 100 : 0, last: last };
+  }
+  function fail(e) { console.error(e); KC.toast(KC.friendlyError(e), 'err'); }
+
+  /* Every list is read in pages of 1000 (the API's row limit), so the numbers
+     stay right however many students and waitlist sign-ups there are. */
+  async function loadAll() {
+    var r = await Promise.all([
+      KC.fetchAll(function () { return sb.from('profiles').select('id, email, full_name, wedding_date, role, created_at').order('created_at', { ascending: false }).order('id'); }),
+      KC.fetchAll(function () { return sb.from('lesson_progress').select('user_id, lesson_id, completed_at, last_viewed_at').order('user_id').order('lesson_id'); }),
+      KC.fetchAll(function () { return sb.from('lessons').select('*').order('part').order('position').order('id'); }),
+      KC.fetchAll(function () { return sb.from('waitlist').select('id, email, created_at').order('created_at', { ascending: false }).order('id'); }),
+      KC.fetchAll(function () { return sb.from('announcements').select('*').order('created_at', { ascending: false }).order('id'); })
+    ]);
+    S.profiles = r[0]; S.progress = r[1]; S.lessons = r[2]; S.waitlist = r[3]; S.announcements = r[4];
+  }
+
+  /* ------------------------------------------------------------ shell */
+  var TABS = [
+    ['overview', 'Overview'], ['students', 'Students'], ['waitlist', 'Waitlist'], ['lessons', 'Lessons'], ['announcements', 'Announcements']
+  ];
+  function counts(k) {
+    if (k === 'students') return students().length;
+    if (k === 'waitlist') return S.waitlist.length;
+    if (k === 'lessons') return S.lessons.length;
+    if (k === 'announcements') return S.announcements.length;
+    return null;
+  }
+  function renderNav() {
+    KC.clear(nav).appendChild(h('p', { class: 'label' }, 'Dashboard'));
+    TABS.forEach(function (t) {
+      var c = counts(t[0]);
+      nav.appendChild(h('button', { type: 'button', role: 'tab', 'aria-selected': S.tab === t[0] ? 'true' : 'false', onclick: function () { go(t[0], { focus: true }); } },
+        h('span', null, t[1]), c !== null ? h('span', { class: 'count' }, String(c)) : null));
+    });
+  }
+  function confirmLeave() {
+    if (!dirty) return true;
+    if (!confirm('Leave without saving your changes?')) return false;
+    dirty = false;
+    return true;
+  }
+  /* opts.keepEdit keeps the editor open; opts.force skips the unsaved-changes
+     check (after a save); opts.focus moves focus to the new heading. */
+  function go(tab, opts) {
+    opts = opts || {};
+    if (!opts.force && !confirmLeave()) { renderNav(); return; }
+    S.tab = tab;
+    if (!opts.keepEdit) S.editing = null;
+    try { history.replaceState(null, '', 'admin.html' + (tab === 'overview' ? '' : '#' + tab)); } catch (e) {}
+    renderNav();
+    KC.clear(main);
+    ({ overview: vOverview, students: vStudents, waitlist: vWaitlist, lessons: vLessons, announcements: vAnnouncements })[tab]();
+    if (window.innerWidth < 880) window.scrollTo(0, 0);
+    if (opts.focus) {
+      var t = main.querySelector('h1');
+      if (t) { t.setAttribute('tabindex', '-1'); try { t.focus({ preventScroll: true }); } catch (e) { t.focus(); } }
+    }
+  }
+  function head(script, title, actions) {
+    return h('div', { class: 'admin-head' }, h('div', null, h('span', { class: 'script' }, script), h('h1', { class: 'display', tabindex: '-1' }, title)), actions ? h('div', { class: 'actions' }, actions) : null);
+  }
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  /* ------------------------------------------------------------ overview */
+  function vOverview() {
+    var st = students(), open = openLessons();
+    var weekAgo = Date.now() - 7 * 86400000;
+    var newStudents = st.filter(function (p) { return new Date(p.created_at) > weekAgo; }).length;
+    var newWait = S.waitlist.filter(function (w) { return new Date(w.created_at) > weekAgo; }).length;
+    var ids = {}; st.forEach(function (p) { ids[p.id] = true; });
+    var openIds = {}; open.forEach(function (l) { openIds[l.id] = true; });
+    var completions = S.progress.filter(function (r) { return r.completed_at && ids[r.user_id] && openIds[r.lesson_id]; }).length;
+    var avg = st.length && open.length ? completions / (st.length * open.length) * 100 : 0;
+    var finished = st.filter(function (p) { var s = studentStats(p.id); return s.total && s.done === s.total; }).length;
+    var soon = published().length - open.length;
+
+    function stat(label, value, sub) { return h('div', { class: 'card stat' }, h('span', { class: 'label' }, label), h('b', null, String(value)), h('small', null, sub)); }
+
+    var lessonBars = h('div', { class: 'barlist' }, open.length ? open.map(function (l) {
+      var n = S.progress.filter(function (r) { return r.lesson_id === l.id && r.completed_at && ids[r.user_id]; }).length;
+      var pct = st.length ? n / st.length * 100 : 0;
+      return h('div', { class: 'row' }, h('span', { class: 'n' }, studentNum(l)), h('span', { class: 't' }, l.title), h('span', { class: 'v' }, n + ' / ' + st.length),
+        h('div', { class: 'bar' }, h('i', { style: 'width:' + pct.toFixed(1) + '%' })));
+    }) : h('p', { class: 'muted' }, 'No lessons are open to students yet. A published lesson opens as soon as it has text or a video.'));
+
+    var recent = st.slice(0, 6);
+    var people = h('div', { class: 'people' }, recent.length ? recent.map(function (p) {
+      var s = studentStats(p.id);
+      return h('div', { class: 'person' }, h('span', { class: 'avatar', 'aria-hidden': 'true' }, initials(p)),
+        h('div', { style: 'flex:1' }, h('b', null, p.full_name || p.email || 'Student'), h('small', null, 'Joined ' + KC.fmtDate(p.created_at) + ' · ' + s.done + '/' + s.total + ' lessons')));
+    }) : h('p', { class: 'muted' }, 'No students yet. They will appear here as soon as they sign up.'));
+
+    main.appendChild(head('Welcome back', 'Overview', h('button', { class: 'btn line small', type: 'button', onclick: refresh }, 'Refresh')));
+    main.appendChild(h('div', { class: 'stats' },
+      stat('Students', st.length, newStudents + ' new this week'),
+      stat('Waitlist', S.waitlist.length, newWait + ' new this week'),
+      stat('Completions', completions, Math.round(avg) + '% average progress'),
+      stat('Graduates', finished, 'finished all open lessons'),
+      stat('Open lessons', open.length, soon ? soon + ' coming soon · ' + S.lessons.length + ' total' : 'of ' + S.lessons.length + ' total')));
+    main.appendChild(h('div', { class: 'two-col' },
+      h('section', { class: 'card' }, h('h2', { class: 'display' }, 'Completion by lesson'), lessonBars),
+      h('section', { class: 'card' }, h('h2', { class: 'display' }, 'Newest students'), people,
+        st.length > 6 ? h('button', { class: 'btn ghost small', type: 'button', onclick: function () { go('students', { focus: true }); } }, 'See all students', icon('arrowR')) : null)));
+  }
+
+  /* ------------------------------------------------------------ students */
+  function vStudents() {
+    var q = h('input', { class: 'input', type: 'search', placeholder: 'Search by name or email', 'aria-label': 'Search students' });
+    var tbody = h('tbody');
+    var all = students(); // teachers are not listed or exported
+    function paint() {
+      var term = q.value.trim().toLowerCase();
+      var list = all.filter(function (p) { return !term || (p.full_name || '').toLowerCase().indexOf(term) >= 0 || (p.email || '').toLowerCase().indexOf(term) >= 0; });
+      KC.clear(tbody);
+      if (!list.length) { tbody.appendChild(h('tr', null, h('td', { colspan: '5', class: 'empty' }, all.length ? 'No students match your search.' : 'No students yet.'))); return; }
+      list.forEach(function (p) {
+        var s = studentStats(p.id);
+        tbody.appendChild(h('tr', null,
+          h('td', { 'data-label': 'Student' }, h('div', null, h('span', { class: 'strong' }, p.full_name || '—'), h('br'), h('small', { class: 'muted' }, p.email || ''))),
+          h('td', { 'data-label': 'Wedding' }, p.wedding_date ? KC.fmtDate(p.wedding_date) : '—'),
+          h('td', { 'data-label': 'Progress' }, h('span', null, h('span', { class: 'bar' }, h('i', { style: 'width:' + s.pct.toFixed(1) + '%' })), s.done + '/' + s.total)),
+          h('td', { 'data-label': 'Last active' }, s.last ? KC.relTime(s.last) : 'Not started'),
+          h('td', { 'data-label': 'Joined' }, KC.fmtDate(p.created_at))));
+      });
+    }
+    q.addEventListener('input', paint);
+    function exportCsv() {
+      var rows = [['Name', 'Email', 'Wedding date', 'Lessons completed', 'Open lessons', 'Last active', 'Joined']];
+      all.forEach(function (p) { var s = studentStats(p.id); rows.push([p.full_name || '', p.email || '', p.wedding_date || '', s.done, s.total, s.last || '', p.created_at]); });
+      KC.downloadCsv('kallah-club-students-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
+    }
+    main.appendChild(head('Your kallahs', 'Students', h('button', { class: 'btn line small', type: 'button', onclick: exportCsv, disabled: !all.length }, icon('download'), 'Export CSV')));
+    main.appendChild(h('div', { class: 'toolbar' }, q));
+    main.appendChild(h('div', { class: 'card table-card' }, h('table', { class: 'data students' },
+      h('thead', null, h('tr', null, ['Student', 'Wedding', 'Progress', 'Last active', 'Joined'].map(function (t) { return h('th', { scope: 'col' }, t); }))), tbody)));
+    paint();
+  }
+
+  /* ------------------------------------------------------------ waitlist */
+  function vWaitlist() {
+    var q = h('input', { class: 'input', type: 'search', placeholder: 'Search emails', 'aria-label': 'Search the waitlist' });
+    var tbody = h('tbody');
+    function paint() {
+      var term = q.value.trim().toLowerCase();
+      var list = S.waitlist.filter(function (w) { return !term || w.email.toLowerCase().indexOf(term) >= 0; });
+      KC.clear(tbody);
+      if (!list.length) { tbody.appendChild(h('tr', null, h('td', { colspan: '3', class: 'empty' }, S.waitlist.length ? 'No emails match your search.' : 'No one has joined the waitlist yet.'))); return; }
+      list.forEach(function (w) {
+        tbody.appendChild(h('tr', null,
+          h('td', { 'data-label': '#' }, String(S.waitlist.length - S.waitlist.indexOf(w))),
+          h('td', { 'data-label': 'Email' }, h('span', { class: 'strong' }, w.email)),
+          h('td', { 'data-label': 'Joined' }, KC.fmtDate(w.created_at, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }))));
+      });
+    }
+    q.addEventListener('input', paint);
+    function exportCsv() {
+      var rows = [['Email', 'Joined']];
+      S.waitlist.forEach(function (w) { rows.push([w.email, w.created_at]); });
+      KC.downloadCsv('kallah-club-waitlist-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
+    }
+    async function copyAll() {
+      try { await navigator.clipboard.writeText(S.waitlist.map(function (w) { return w.email; }).join(', ')); KC.toast('Copied ' + S.waitlist.length + ' emails.'); }
+      catch (e) { KC.toast('Could not copy. Use Export CSV instead.', 'err'); }
+    }
+    main.appendChild(head('Waiting to begin', 'Waitlist', [
+      h('button', { class: 'btn line small', type: 'button', onclick: copyAll, disabled: !S.waitlist.length }, 'Copy emails'),
+      h('button', { class: 'btn small', type: 'button', onclick: exportCsv, disabled: !S.waitlist.length }, icon('download'), 'Export CSV')]));
+    main.appendChild(h('div', { class: 'toolbar' }, q));
+    main.appendChild(h('div', { class: 'card table-card' }, h('table', { class: 'data' },
+      h('thead', null, h('tr', null, h('th', { scope: 'col', style: 'width:60px' }, '#'), h('th', { scope: 'col' }, 'Email'), h('th', { scope: 'col' }, 'Joined'))), tbody)));
+    paint();
+  }
+
+  /* ------------------------------------------------------------ lessons */
+  function vLessons() {
+    if (S.editing) return vEditor(S.editing);
+    var groups = {}, order = [];
+    S.lessons.forEach(function (l) { if (!groups[l.part]) { groups[l.part] = []; order.push(l.part); } groups[l.part].push(l); });
+    main.appendChild(head('Course content', 'Lessons', h('button', { class: 'btn small', type: 'button', onclick: function () { S.editing = 'new'; go('lessons', { keepEdit: true, focus: true }); } }, icon('plus'), 'New lesson')));
+    if (!S.lessons.length) { main.appendChild(h('div', { class: 'card empty' }, h('span', { class: 'script' }, 'Begin'), 'No lessons yet. Add your first one.')); return; }
+    main.appendChild(h('p', { class: 'small muted', style: 'margin:-8px 0 22px' }, 'Numbers match what students see. A published lesson without text or a video shows to students as locked “Coming soon”.'));
+    var list = h('div', { class: 'lesson-admin-list' });
+    order.forEach(function (part) {
+      var ls = groups[part];
+      list.appendChild(h('div', { class: 'part-block' },
+        h('div', { class: 'part-title' }, h('span', { class: 'script' }, partWord(part)), h('h3', { class: 'display' }, ls[0].part_title || '')),
+        h('div', { class: 'card', style: 'padding:0' }, ls.map(function (l) {
+          var has = KC.hasContent(l);
+          var tag = !l.published ? h('span', { class: 'tag draft' }, 'Draft')
+            : has ? h('span', { class: 'tag pub' }, 'Published')
+            : h('span', { class: 'tag soon', title: 'Published, but students see it as locked until it has text or a video' }, 'Coming soon');
+          return h('div', { class: 'ladmin' },
+            h('span', { class: 'num' }, studentNum(l)),
+            h('div', null, h('b', null, l.title), h('small', null, has ? (l.body && l.body.trim() ? (l.video_url ? 'Video + text' : 'Text') : 'Video') + ' · updated ' + KC.relTime(l.updated_at) : 'No lesson content yet')),
+            tag,
+            h('button', { class: 'btn line small', type: 'button', onclick: function () { S.editing = l.id; go('lessons', { keepEdit: true, focus: true }); } }, 'Edit'));
+        }))));
+    });
+    main.appendChild(list);
+  }
+
+  function vEditor(id) {
+    var isNew = id === 'new';
+    var maxPart = S.lessons.reduce(function (m, l) { return Math.max(m, l.part); }, 1);
+    var l = isNew ? { part: maxPart, part_title: (S.lessons.filter(function (x) { return x.part === maxPart; })[0] || {}).part_title || '', position: S.lessons.filter(function (x) { return x.part === maxPart; }).length + 1, title: '', summary: '', body: '', video_url: '', published: false }
+                  : S.lessons.find(function (x) { return x.id === id; });
+    if (!l) { S.editing = null; return vLessons(); }
+    dirty = false;
+
+    function field(label, input, hint) { return h('label', { class: 'field' }, h('span', null, label), input, hint ? h('small', { class: 'hint' }, hint) : null); }
+    var f = {
+      title: h('input', { type: 'text', maxlength: '160', required: true, value: l.title }),
+      summary: h('textarea', { maxlength: '600', rows: '3', style: 'min-height:90px' }),
+      part: h('input', { type: 'number', min: '1', max: '20', value: String(l.part) }),
+      part_title: h('input', { type: 'text', maxlength: '80', value: l.part_title }),
+      position: h('input', { type: 'number', min: '1', max: '99', value: String(l.position) }),
+      video_url: h('input', { type: 'url', maxlength: '500', placeholder: 'https://www.youtube.com/watch?v=…', value: l.video_url || '' }),
+      body: h('textarea', { class: 'code', maxlength: '200000', spellcheck: 'true', 'aria-label': 'Lesson text' }),
+      published: h('input', { type: 'checkbox' })
+    };
+    f.summary.value = l.summary || '';
+    f.body.value = l.body || '';
+    f.published.checked = !!l.published;
+
+    /* Formatting toolbar: wraps or prefixes the selected text with Markdown. */
+    function markDirty() { dirty = true; }
+    function wrapSel(pre, post, placeholder) {
+      var ta = f.body, s = ta.selectionStart, e = ta.selectionEnd;
+      var t = ta.value.slice(s, e) || placeholder;
+      ta.focus();
+      ta.setRangeText(pre + t + post, s, e, 'end');
+      ta.setSelectionRange(s + pre.length, s + pre.length + t.length);
+      markDirty();
+    }
+    function prefixLines(p) {
+      var ta = f.body, v = ta.value, s = ta.selectionStart, e = ta.selectionEnd;
+      var ls = v.lastIndexOf('\n', s - 1) + 1, le = v.indexOf('\n', e);
+      if (le < 0) le = v.length;
+      var lines = v.slice(ls, le).split('\n');
+      var all = lines.every(function (x) { return x.indexOf(p) === 0; });
+      var out = lines.map(function (x, i) {
+        if (all) return x.slice(p.length);
+        var pp = p === '1. ' ? (i + 1) + '. ' : p;
+        return pp + x.replace(/^(#{1,6} |- |> |\d+\. )/, '');
+      }).join('\n');
+      ta.focus();
+      ta.setRangeText(out, ls, le, 'select');
+      markDirty();
+    }
+    function addLink() {
+      var url = prompt('Link address (starts with https://)', 'https://');
+      if (!url || url === 'https://') return;
+      if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+      wrapSel('[', '](' + url.replace(/\)/g, '%29') + ')', 'link text');
+    }
+    function tb(label, title, fn, style) {
+      return h('button', { type: 'button', title: title, 'aria-label': title, style: style || null, onclick: fn }, label);
+    }
+    var fmtBar = h('div', { class: 'fmt-bar', role: 'toolbar', 'aria-label': 'Formatting' },
+      tb('H', 'Heading', function () { prefixLines('## '); }, 'font-family:var(--display);font-weight:600;font-size:17px'),
+      tb('B', 'Bold', function () { wrapSel('**', '**', 'bold text'); }, 'font-weight:700'),
+      tb('I', 'Italic', function () { wrapSel('*', '*', 'italic text'); }, 'font-style:italic;font-family:Georgia,serif'),
+      h('span', { class: 'sep', 'aria-hidden': 'true' }),
+      tb('• List', 'Bulleted list', function () { prefixLines('- '); }),
+      tb('1. List', 'Numbered list', function () { prefixLines('1. '); }),
+      tb('“ Quote', 'Quote', function () { prefixLines('> '); }),
+      h('span', { class: 'sep', 'aria-hidden': 'true' }),
+      tb('Link', 'Link', addLink, 'text-decoration:underline;text-underline-offset:3px'));
+    var writeArea = h('div', null, fmtBar, f.body);
+
+    var preview = h('div', { class: 'preview prose', hidden: true });
+    var tWrite = h('button', { type: 'button', role: 'tab', 'aria-selected': 'true' }, 'Write');
+    var tPrev = h('button', { type: 'button', role: 'tab', 'aria-selected': 'false' }, 'Preview');
+    function setTab(p) {
+      tWrite.setAttribute('aria-selected', !p); tPrev.setAttribute('aria-selected', p);
+      writeArea.hidden = p; preview.hidden = !p;
+      if (p) {
+        KC.clear(preview);
+        var v = KC.videoEmbed(f.video_url.value.trim());
+        if (v) preview.appendChild(v);
+        if (f.body.value.trim()) preview.appendChild(KC.renderRich(f.body.value));
+        else if (!v) preview.appendChild(h('p', { class: 'muted' }, 'Nothing to preview yet.'));
+      }
+    }
+    tWrite.addEventListener('click', function () { setTab(false); });
+    tPrev.addEventListener('click', function () { setTab(true); });
+
+    var note = h('p', { class: 'note', role: 'status' });
+    var saveBtn = h('button', { class: 'btn', type: 'submit' }, isNew ? 'Create lesson' : 'Save lesson');
+    var form = h('form', { class: 'panel editor', novalidate: true },
+      field('Lesson title', f.title),
+      field('Summary', f.summary, 'One or two sentences shown on the course page.'),
+      h('div', { class: 'form-row' }, field('Part number', f.part), field('Part name', f.part_title), field('Order in part', f.position)),
+      field('Video link (optional)', f.video_url, 'YouTube or Vimeo links play inside the lesson. Other links show as a button.'),
+      h('div', { class: 'field' },
+        h('div', { style: 'display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap' },
+          h('span', { class: 'label' }, 'Lesson text'),
+          h('div', { class: 'editor-tabs', role: 'tablist' }, tWrite, tPrev)),
+        writeArea, preview,
+        h('small', { class: 'hint' }, 'Select text and use the buttons above to format it. Leave a blank line between paragraphs. Use Preview to see it as students will.')),
+      h('label', { class: 'check' }, f.published, 'Published (students can see this lesson)'),
+      h('div', { class: 'sticky-actions' },
+        h('div', { class: 'actions' }, saveBtn,
+          h('button', { class: 'btn line', type: 'button', onclick: function () { go('lessons', { focus: true }); } }, 'Back'),
+          !isNew ? h('a', { class: 'btn ghost small', href: 'course.html?lesson=' + l.id, target: '_blank', rel: 'noopener' }, icon('eye'), 'View as student') : null),
+        !isNew ? h('button', { class: 'btn danger small', type: 'button', onclick: del }, 'Delete') : null),
+      note);
+    form.addEventListener('input', markDirty);
+    form.addEventListener('change', markDirty);
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var title = f.title.value.trim();
+      if (!title) { note.className = 'note err'; note.textContent = 'Please give the lesson a title.'; f.title.focus(); return; }
+      var video = f.video_url.value.trim();
+      if (video && !/^https:\/\//i.test(video)) { note.className = 'note err'; note.textContent = 'The video link must start with https://'; f.video_url.focus(); return; }
+      var row = {
+        title: title, summary: f.summary.value.trim(), body: f.body.value,
+        part: Math.min(20, Math.max(1, parseInt(f.part.value, 10) || 1)), part_title: f.part_title.value.trim(),
+        position: Math.max(1, parseInt(f.position.value, 10) || 1), video_url: video || null, published: f.published.checked
+      };
+      saveBtn.disabled = true; note.className = 'note'; note.textContent = 'Saving…';
+      var r = isNew ? await sb.from('lessons').insert(row).select().single()
+                    : await sb.from('lessons').update(row).eq('id', l.id).select().single();
+      saveBtn.disabled = false;
+      if (r.error) { note.className = 'note err'; note.textContent = KC.friendlyError(r.error); return; }
+      if (isNew) S.lessons.push(r.data); else S.lessons[S.lessons.indexOf(l)] = r.data;
+      S.lessons.sort(function (a, b) { return a.part - b.part || a.position - b.position || a.id - b.id; });
+      dirty = false;
+      KC.toast(isNew ? 'Lesson created.' : 'Lesson saved.');
+      S.editing = r.data.id;
+      go('lessons', { keepEdit: true, force: true });
+    });
+    async function del() {
+      if (!confirm('Delete "' + l.title + '"? This removes the lesson and every student\'s progress on it. This cannot be undone.')) return;
+      var r = await sb.from('lessons').delete().eq('id', l.id);
+      if (r.error) return fail(r.error);
+      S.lessons = S.lessons.filter(function (x) { return x.id !== l.id; });
+      S.progress = S.progress.filter(function (x) { return x.lesson_id !== l.id; });
+      dirty = false;
+      KC.toast('Lesson deleted.');
+      go('lessons', { force: true, focus: true });
+    }
+
+    main.appendChild(head(isNew ? 'A new lesson' : 'Editing', isNew ? 'New lesson' : l.title));
+    main.appendChild(form);
+  }
+
+  /* ------------------------------------------------------------ announcements */
+  /* Runs an async button action once: disabled while it runs, re-enabled after. */
+  function once(fn) {
+    return async function () {
+      var b = this;
+      if (b.disabled) return;
+      b.disabled = true;
+      try { await fn.call(b); } finally { if (b.isConnected) b.disabled = false; }
+    };
+  }
+  function vAnnouncements() {
+    var title = h('input', { type: 'text', maxlength: '160', placeholder: 'e.g. Welcome to The Kallah Club' });
+    var body = h('textarea', { maxlength: '4000', rows: '4', placeholder: 'Your message to students' });
+    var pub = h('input', { type: 'checkbox', checked: true });
+    var note = h('p', { class: 'note', role: 'status' });
+    var btn = h('button', { class: 'btn', type: 'submit' }, 'Post announcement');
+    var form = h('form', { class: 'panel form-grid', novalidate: true },
+      h('label', { class: 'field' }, h('span', null, 'Title'), title),
+      h('label', { class: 'field' }, h('span', null, 'Message'), body),
+      h('label', { class: 'check' }, pub, 'Show to students now'),
+      h('div', { class: 'actions' }, btn, note));
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (btn.disabled) return;
+      if (!title.value.trim()) { note.className = 'note err'; note.textContent = 'Please add a title.'; title.focus(); return; }
+      btn.disabled = true; note.className = 'note'; note.textContent = 'Posting…';
+      var r = await sb.from('announcements').insert({ title: title.value.trim(), body: body.value.trim(), published: pub.checked }).select().single();
+      btn.disabled = false;
+      if (r.error) { note.className = 'note err'; note.textContent = KC.friendlyError(r.error); return; }
+      S.announcements.unshift(r.data);
+      KC.toast(pub.checked ? 'Announcement posted.' : 'Saved as hidden.');
+      go('announcements');
+    });
+
+    var list = h('div', { class: 'card', style: 'padding:6px 22px' }, S.announcements.length ? S.announcements.map(function (a) {
+      return h('article', { class: 'ann' },
+        h('div', { style: 'display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap' },
+          h('div', { style: 'min-width:0' }, h('time', { datetime: a.created_at }, KC.fmtDate(a.created_at)), ' ', h('span', { class: 'tag ' + (a.published ? 'pub' : 'draft') }, a.published ? 'Visible' : 'Hidden'), h('h4', null, a.title)),
+          h('div', { class: 'actions' },
+            h('button', { class: 'btn line small', type: 'button', onclick: once(async function () {
+              var r = await sb.from('announcements').update({ published: !a.published }).eq('id', a.id).select().single();
+              if (r.error) return fail(r.error);
+              S.announcements[S.announcements.indexOf(a)] = r.data;
+              KC.toast(r.data.published ? 'Announcement shown to students.' : 'Announcement hidden.');
+              go('announcements');
+            }) }, a.published ? 'Hide' : 'Show'),
+            h('button', { class: 'btn danger small', type: 'button', onclick: once(async function () {
+              if (!confirm('Delete this announcement? This cannot be undone.')) return;
+              var r = await sb.from('announcements').delete().eq('id', a.id);
+              if (r.error) return fail(r.error);
+              S.announcements = S.announcements.filter(function (x) { return x.id !== a.id; });
+              KC.toast('Announcement deleted.');
+              go('announcements');
+            }) }, 'Delete'))),
+        a.body ? h('p', null, a.body) : null);
+    }) : h('p', { class: 'empty' }, 'No announcements yet.'));
+
+    main.appendChild(head('Share with your kallahs', 'Announcements'));
+    main.appendChild(form);
+    main.appendChild(h('h2', { class: 'display', style: 'font-size:18px;margin:40px 0 14px' }, 'Posted'));
+    main.appendChild(list);
+  }
+
+  async function refresh() {
+    try { await loadAll(); go(S.tab, { keepEdit: true }); KC.toast('Updated.'); } catch (e) { fail(e); }
+  }
+
+  function denied() {
+    KC.clear(app).appendChild(h('div', { class: 'wrap' }, h('div', { class: 'panel denied' },
+      h('div', { class: 'success-mark' }, icon('lock')),
+      h('p', { class: 'script' }, 'Teachers only'),
+      h('h1', { class: 'display' }, 'Access restricted'),
+      h('p', null, 'This dashboard is for Rabbanit Rachel. Your course is waiting for you.'),
+      h('a', { class: 'btn', href: 'course.html' }, 'Go to my course'))));
+  }
+
+  (async function init() {
+    try {
+      S.user = await KC.requireUser();
+      S.profile = await KC.getProfile(S.user);
+      KC.clear(document.getElementById('bar')).appendChild(KC.topbar({ profile: S.profile, active: 'admin' }));
+      if (S.profile.role !== 'admin') { document.title = 'Access restricted · The Kallah Club'; return denied(); }
+      await loadAll();
+      nav = h('nav', { class: 'sidenav', role: 'tablist', 'aria-label': 'Dashboard sections' });
+      main = h('section', { class: 'admin-main' });
+      KC.clear(app).appendChild(h('div', { class: 'wrap page' }, h('div', { class: 'admin-layout' }, nav, main)));
+      var start = location.hash.replace('#', '');
+      go(TABS.some(function (t) { return t[0] === start; }) ? start : 'overview');
+    } catch (e) {
+      console.error(e);
+      KC.clear(app).appendChild(h('div', { class: 'wrap' }, h('div', { class: 'panel denied' },
+        h('p', { class: 'script' }, 'Oh dear'), h('h1', { class: 'display' }, 'Something went wrong'), h('p', null, KC.friendlyError(e)),
+        h('button', { class: 'btn', type: 'button', onclick: function () { location.reload(); } }, 'Try again'))));
+    }
+  })();
+  KC.sb.auth.onAuthStateChange(function (event) { if (event === 'SIGNED_OUT') location.replace('account.html'); });
+})();
+</script>
+</body>
+</html>

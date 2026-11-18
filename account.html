@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Log in · The Kallah Club</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant:wght@400;500;600&family=Herr+Von+Muellerhoff&family=Inter:wght@400;500;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2716%27 fill=%27%23f7f4f0%27/%3E%3Cpath d=%27M16 5 27 16 16 27 5 16Z%27 fill=%27%23887289%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="auth-page">
+  <header>
+    <div class="wrap">
+      <a class="brand" href="index.html"><b>The Kallah</b><i>Club</i></a>
+      <a class="btn line small" href="index.html">Back to site</a>
+    </div>
+  </header>
+
+  <main class="auth-main">
+    <!-- Log in / Sign up -->
+    <section class="panel auth-card" id="view-auth" hidden>
+      <p class="script" id="auth-script">Welcome back</p>
+      <h1 class="display" id="auth-title">Log in</h1>
+      <div class="rule" aria-hidden="true"><span class="ico"><svg viewBox="0 0 10 10"><path d="M5 0 L10 5 L5 10 L0 5 Z" fill="currentColor"/></svg></span></div>
+      <div class="tabs" role="tablist" aria-label="Log in or create an account">
+        <button type="button" role="tab" id="tab-login" aria-selected="true" aria-controls="form-login">Log in</button>
+        <button type="button" role="tab" id="tab-signup" aria-selected="false" aria-controls="form-signup">Create account</button>
+      </div>
+
+      <form id="form-login" novalidate>
+        <label class="field"><span>Email</span><input type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label>
+        <label class="field"><span>Password</span>
+          <div class="pw"><input type="password" name="password" autocomplete="current-password" required minlength="6"><button class="toggle" type="button" aria-label="Show password">Show</button></div>
+        </label>
+        <div style="text-align:right;margin-top:-6px"><button type="button" class="linkbtn" data-go="forgot">Forgot your password?</button></div>
+        <button class="btn" type="submit">Log in</button>
+        <p class="note" role="status"></p>
+        <div style="text-align:center;margin-top:-8px" hidden id="login-resend"><button type="button" class="linkbtn">Resend confirmation email</button></div>
+      </form>
+
+      <form id="form-signup" novalidate hidden>
+        <label class="field"><span>Your name</span><input type="text" name="full_name" autocomplete="name" required maxlength="120" placeholder="First and last name"></label>
+        <label class="field"><span>Email</span><input type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label>
+        <label class="field"><span>Password</span>
+          <div class="pw"><input type="password" name="password" autocomplete="new-password" required minlength="8"><button class="toggle" type="button" aria-label="Show password">Show</button></div>
+          <small class="hint">At least 8 characters.</small>
+        </label>
+        <button class="btn" type="submit">Create my account</button>
+        <p class="note" role="status"></p>
+      </form>
+    </section>
+
+    <!-- Forgot password -->
+    <section class="panel auth-card" id="view-forgot" hidden>
+      <p class="script">No worries</p>
+      <h1 class="display">Reset password</h1>
+      <p>Enter the email you signed up with and we will send you a link to choose a new password.</p>
+      <form id="form-forgot" novalidate>
+        <label class="field"><span>Email</span><input type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label>
+        <button class="btn" type="submit">Send reset link</button>
+        <p class="note" role="status"></p>
+      </form>
+      <button type="button" class="linkbtn" data-go="login">Back to log in</button>
+    </section>
+
+    <!-- Set a new password (arrives from the email link) -->
+    <section class="panel auth-card" id="view-reset" hidden>
+      <p class="script">Almost there</p>
+      <h1 class="display">New password</h1>
+      <p id="reset-intro">Choose a new password for your account.</p>
+      <form id="form-reset" novalidate>
+        <label class="field"><span>New password</span>
+          <div class="pw"><input type="password" name="password" autocomplete="new-password" required minlength="8"><button class="toggle" type="button" aria-label="Show password">Show</button></div>
+          <small class="hint">At least 8 characters.</small>
+        </label>
+        <label class="field"><span>Confirm password</span><input type="password" name="confirm" autocomplete="new-password" required minlength="8"></label>
+        <button class="btn" type="submit">Save new password</button>
+        <p class="note" role="status"></p>
+      </form>
+    </section>
+
+    <!-- Message screen (check your email, link expired, etc.) -->
+    <section class="panel auth-card" id="view-message" hidden>
+      <div class="success-mark" aria-hidden="true">
+        <span class="ico" id="msg-icon-mail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/></svg></span>
+        <span class="ico" id="msg-icon-clock" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+      </div>
+      <p class="script" id="msg-script">Check your inbox</p>
+      <h1 class="display" id="msg-title">One more step</h1>
+      <p id="msg-body"></p>
+      <!-- Resend a sign-up confirmation email (shown when it helps) -->
+      <form id="form-resend" novalidate hidden>
+        <label class="field"><span>Email</span><input type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label>
+        <button class="btn" type="submit">Resend confirmation email</button>
+        <p class="note" role="status"></p>
+      </form>
+      <button type="button" class="btn" data-go="forgot" id="msg-new-link" hidden>Request a new link</button>
+      <button type="button" class="btn line" data-go="login">Back to log in</button>
+    </section>
+
+    <div class="loading" id="view-loading"><p class="script">The Kallah Club</p><p class="eyebrow dots">Loading</p></div>
+  </main>
+
+  <footer class="auth-foot">© 2026 The Kallah Club · With Rabbanit Rachel Benchimol</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" integrity="sha384-0w2KAL2YHP6wKOkUDzkCDGgVvfmHnj02DHeQ6XcHOgTfFsGyonKOpShMH1x6nk9o" crossorigin="anonymous"></script>
+<script src="preview.js"></script>
+<script src="app.js"></script>
+<script>
+(function () {
+  'use strict';
+  var sb = KC.sb;
+  var params = new URLSearchParams(location.search);
+  var hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  var next = KC.safeNext(params.get('next'));
+  var views = ['auth', 'forgot', 'reset', 'message', 'loading'];
+  var inRecovery = params.get('mode') === 'reset' || hash.get('type') === 'recovery';
+
+  // Confirmation links land here first, so an expired link shows the right screen.
+  var CONFIRM_URL = KC.pageUrl('account.html') + '?next=course.html';
+  var TITLES = { forgot: 'Reset password', reset: 'New password' };
+
+  function show(name) {
+    views.forEach(function (v) { document.getElementById('view-' + v).hidden = v !== name; });
+    if (TITLES[name]) document.title = TITLES[name] + ' · The Kallah Club';
+    var first = document.querySelector('#view-' + name + ' form:not([hidden]) input');
+    if (first && name !== 'loading' && window.innerWidth > 700) setTimeout(function () { first.focus(); }, 30);
+  }
+  async function resendConfirmation(email, btn, done) {
+    btn.disabled = true;
+    var r = await sb.auth.resend({ type: 'signup', email: email, options: { emailRedirectTo: CONFIRM_URL } });
+    btn.disabled = false;
+    if (r.error) { done(KC.friendlyError(r.error), 'err'); return; }
+    done('A new confirmation email is on its way to ' + email + '.', 'ok');
+    KC.toast('Confirmation email sent.');
+  }
+  function setTab(which) {
+    var login = which === 'login';
+    document.getElementById('tab-login').setAttribute('aria-selected', login);
+    document.getElementById('tab-signup').setAttribute('aria-selected', !login);
+    document.getElementById('form-login').hidden = !login;
+    document.getElementById('form-signup').hidden = login;
+    document.getElementById('auth-script').textContent = login ? 'Welcome back' : 'Welcome, kallah';
+    document.getElementById('auth-title').textContent = login ? 'Log in' : 'Create your account';
+    document.title = (login ? 'Log in' : 'Create account') + ' · The Kallah Club';
+    show('auth');
+  }
+  /* opts.icon: 'mail' (default) or 'clock'; opts.resend: show the resend form
+     (prefilled with opts.email); opts.newLink: show "Request a new link". */
+  function message(script, title, body, opts) {
+    opts = opts || {};
+    document.getElementById('msg-script').textContent = script;
+    document.getElementById('msg-title').textContent = title;
+    document.getElementById('msg-body').textContent = body;
+    document.getElementById('msg-icon-mail').hidden = opts.icon === 'clock';
+    document.getElementById('msg-icon-clock').hidden = opts.icon !== 'clock';
+    var rf = document.getElementById('form-resend');
+    rf.hidden = !opts.resend;
+    note(rf, '');
+    if (opts.resend) rf.email.value = opts.email || document.querySelector('#form-login [name=email]').value || '';
+    document.getElementById('msg-new-link').hidden = !opts.newLink;
+    document.title = title + ' · The Kallah Club';
+    show('message');
+  }
+  function note(form, text, kind) {
+    var n = form.querySelector('.note');
+    n.textContent = text || '';
+    n.className = 'note' + (kind ? ' ' + kind : '');
+  }
+  function busy(form, on, label) {
+    var b = form.querySelector('button[type=submit]');
+    if (on) { b.dataset.label = b.textContent; b.textContent = label || 'One moment…'; b.disabled = true; }
+    else { b.textContent = b.dataset.label || b.textContent; b.disabled = false; }
+  }
+  function validEmail(input) { return input.value.trim() && input.checkValidity(); }
+
+  document.getElementById('tab-login').addEventListener('click', function () { setTab('login'); });
+  document.getElementById('tab-signup').addEventListener('click', function () { setTab('signup'); });
+  document.querySelectorAll('[data-go]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var go = b.getAttribute('data-go');
+      if (go === 'forgot') {
+        var email = document.querySelector('#form-login [name=email]').value;
+        document.querySelector('#form-forgot [name=email]').value = email;
+        show('forgot');
+      } else setTab('login');
+    });
+  });
+  document.querySelectorAll('.pw .toggle').forEach(function (t) {
+    t.addEventListener('click', function () {
+      var i = t.previousElementSibling, showing = i.type === 'text';
+      i.type = showing ? 'password' : 'text';
+      t.textContent = showing ? 'Show' : 'Hide';
+      t.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+    });
+  });
+
+  // Log in
+  document.getElementById('form-login').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var f = e.target, email = f.email, pw = f.password;
+    if (!validEmail(email)) { note(f, 'Enter a valid email address.', 'err'); email.focus(); return; }
+    if (!pw.value) { note(f, 'Enter your password.', 'err'); pw.focus(); return; }
+    busy(f, true, 'Logging in…'); note(f, '');
+    document.getElementById('login-resend').hidden = true;
+    var r = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
+    if (r.error) {
+      busy(f, false); note(f, KC.friendlyError(r.error), 'err');
+      if (/Email not confirmed/i.test(r.error.message || '')) document.getElementById('login-resend').hidden = false;
+      return;
+    }
+    location.replace(next);
+  });
+  document.querySelector('#login-resend button').addEventListener('click', function () {
+    var f = document.getElementById('form-login'), email = f.email;
+    if (!validEmail(email)) { note(f, 'Enter a valid email address.', 'err'); email.focus(); return; }
+    resendConfirmation(email.value.trim(), this, function (text, kind) { note(f, text, kind); });
+  });
+  document.getElementById('form-resend').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target, email = f.email;
+    if (!validEmail(email)) { note(f, 'Enter a valid email address.', 'err'); email.focus(); return; }
+    note(f, 'Sending…');
+    resendConfirmation(email.value.trim(), f.querySelector('button[type=submit]'), function (text, kind) { note(f, text, kind); });
+  });
+
+  // Sign up
+  document.getElementById('form-signup').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var f = e.target, name = f.full_name, email = f.email, pw = f.password;
+    if (!name.value.trim()) { note(f, 'Please tell us your name.', 'err'); name.focus(); return; }
+    if (!validEmail(email)) { note(f, 'Enter a valid email address.', 'err'); email.focus(); return; }
+    if (pw.value.length < 8) { note(f, 'Please choose a password of at least 8 characters.', 'err'); pw.focus(); return; }
+    busy(f, true, 'Creating your account…'); note(f, '');
+    var r = await sb.auth.signUp({
+      email: email.value.trim(),
+      password: pw.value,
+      options: { data: { full_name: name.value.trim().slice(0, 120) }, emailRedirectTo: CONFIRM_URL }
+    });
+    busy(f, false);
+    if (r.error) { note(f, KC.friendlyError(r.error), 'err'); return; }
+    if (r.data && r.data.session) { location.replace('course.html'); return; }
+    var sentTo = email.value.trim();
+    f.reset();
+    message('Check your inbox', 'Confirm your email',
+      'We sent a confirmation link to ' + sentTo + '. Open it on this device to finish creating your account, then you can start the course. Nothing arrived after a few minutes? Check your spam folder, or send it again below.',
+      { resend: true, email: sentTo });
+  });
+
+  // Forgot password
+  document.getElementById('form-forgot').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var f = e.target, email = f.email;
+    if (!validEmail(email)) { note(f, 'Enter a valid email address.', 'err'); email.focus(); return; }
+    busy(f, true, 'Sending…'); note(f, '');
+    var r = await sb.auth.resetPasswordForEmail(email.value.trim(), { redirectTo: KC.pageUrl('account.html') + '?mode=reset' });
+    busy(f, false);
+    if (r.error && /rate limit|Failed to fetch/i.test(r.error.message || '')) { note(f, KC.friendlyError(r.error), 'err'); return; }
+    message('Check your inbox', 'Reset link sent',
+      'If an account exists for ' + email.value.trim() + ', you will receive an email with a link to choose a new password. The link works once and expires after a short time.');
+  });
+
+  // Set new password
+  document.getElementById('form-reset').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var f = e.target;
+    if (f.password.value.length < 8) { note(f, 'Please choose a password of at least 8 characters.', 'err'); f.password.focus(); return; }
+    if (f.password.value !== f.confirm.value) { note(f, 'The two passwords do not match.', 'err'); f.confirm.focus(); return; }
+    var s = await KC.getSession();
+    if (!s) { note(f, 'This reset link has expired. Please request a new one.', 'err'); return; }
+    busy(f, true, 'Saving…'); note(f, '');
+    var r = await sb.auth.updateUser({ password: f.password.value });
+    busy(f, false);
+    if (r.error) { note(f, KC.friendlyError(r.error), 'err'); return; }
+    note(f, 'Your password has been updated. Taking you to your course…', 'ok');
+    setTimeout(function () { location.replace('course.html'); }, 1200);
+  });
+
+  sb.auth.onAuthStateChange(function (event) {
+    if (event === 'PASSWORD_RECOVERY') { inRecovery = true; show('reset'); }
+  });
+
+  (async function init() {
+    if (hash.get('error_description') || hash.get('error')) {
+      history.replaceState(null, '', location.pathname + location.search);
+      if (params.get('mode') === 'reset') {
+        message('Hmm', 'Link expired',
+          'This password reset link is no longer valid. Links from our emails work once and expire after a while. Request a new one below.',
+          { icon: 'clock', newLink: true });
+      } else {
+        message('Hmm', 'Link expired',
+          'This link is no longer valid. Links from our emails work once and expire after a while. If you were confirming your email, enter it below and we will send a fresh link. Already confirmed? Just log in.',
+          { icon: 'clock', resend: true });
+      }
+      return;
+    }
+    var s = await KC.getSession();
+    if (inRecovery) {
+      if (s) show('reset');
+      else message('Hmm', 'Link expired', 'This password reset link is no longer valid. Request a new one below.', { icon: 'clock', newLink: true });
+      return;
+    }
+    if (s) { location.replace(next); return; }
+    if (params.get('mode') === 'signup') setTab('signup'); else setTab('login');
+    if (params.get('mode') === 'forgot') show('forgot');
+    if (params.get('signed_out')) KC.toast('You have been logged out. See you soon.');
+  })();
+})();
+</script>
+</body>
+</html>

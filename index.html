@@ -1,5 +1,6 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>The Kallah Club</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ccircle cx=%2716%27 cy=%2716%27 r=%2716%27 fill=%27%23f7f4f0%27/%3E%3Cpath d=%27M16 5 27 16 16 27 5 16Z%27 fill=%27%23887289%27/%3E%3C/svg%3E">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,7 +57,18 @@ nav .wrap { display: flex; justify-content: space-between; align-items: center; 
 .brand { display: flex; align-items: baseline; gap: 6px; color: var(--espresso); text-decoration: none; }
 .brand b { font: 500 20px var(--display); letter-spacing: .16em; text-transform: uppercase; }
 .brand i { font: 400 34px var(--script); color: var(--copper); font-style: normal; }
-@media (max-width: 440px) { nav .btn { padding: 11px 16px; font-size: 12px; letter-spacing: .1em; } }
+.navlinks { display: flex; align-items: center; gap: clamp(10px, 3vw, 18px); }
+.navlink { font: 500 13px var(--body); letter-spacing: .14em; text-transform: uppercase; color: var(--bluejean); text-decoration: none; white-space: nowrap; }
+.navlink:hover { color: var(--copper); }
+.navlink:focus-visible { outline: 2px solid var(--copper); outline-offset: 3px; }
+@media (max-width: 440px) {
+  nav .btn { padding: 11px 16px; font-size: 12px; letter-spacing: .1em; }
+  .brand { white-space: nowrap; }
+  .brand b { font-size: 16px; letter-spacing: .12em; }
+  .brand i { font-size: 28px; }
+  nav .btn[href="#join"] { display: none; }
+  .navlink { display: inline-block; padding: 11px 18px; font-size: 12px; letter-spacing: .12em; box-shadow: inset 0 0 0 1px var(--rose); border-radius: 999px; }
+}
 
 /* Hero */
 .hero .wrap { display: grid; justify-items: center; text-align: center; gap: 20px; padding-block: 12px 72px; }
@@ -132,7 +144,10 @@ footer .script { font-size: 34px; }
 <nav>
   <div class="wrap">
     <a class="brand" href="#top"><b>The Kallah</b><i>Club</i></a>
-    <a class="btn line" href="#join">Join the waitlist</a>
+    <span class="navlinks">
+      <a class="navlink" href="account.html">Log in</a>
+      <a class="btn line" href="#join">Join the waitlist</a>
+    </span>
   </div>
 </nav>
 
