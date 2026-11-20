@@ -35,18 +35,20 @@
 
   var ME = 'preview-0000-me';
   var LESSONS = [
-    [1, 1, 'Foundations', 1, 'Your Course Plan', 'Personal details, wedding timeline, family customs, rabbinic guidance, learning schedule, and reminders.'],
-    [2, 1, 'Foundations', 2, 'The Purpose of Marriage', 'The Jewish vision of partnership and creating a home where the physical and spiritual come together.'],
-    [3, 1, 'Foundations', 3, 'Adam and Chava', 'Creation, individuality, free choice, and the journey toward becoming one.'],
-    [4, 2, 'The Jewish Home', 1, 'Mitzvot and Meaning', 'How mitzvot connect us to Hashem and elevate everyday life.'],
-    [5, 2, 'The Jewish Home', 2, 'The Three Mitzvot', 'Challah, Shabbat candles, and family purity, with their practical foundations and deeper meaning.'],
-    [6, 2, 'The Jewish Home', 3, 'The Power of a Jewish Woman', 'Your role in shaping the values, atmosphere, and spiritual direction of your home.'],
-    [7, 3, 'Family Purity', 1, 'Tumah and Taharah', 'A clear introduction to spiritual transition, potential life, and renewal.'],
-    [8, 3, 'Family Purity', 2, 'Your Cycle', 'Hefsek taharah, the seven clean days, bedikot, timing, stains, colors, and when to ask a question.'],
-    [9, 3, 'Family Purity', 3, 'Harchakot', 'The practical guidelines for the niddah period at home and while traveling, including family customs.'],
-    [10, 4, 'Mikvah and Calendar', 1, 'Mikvah Preparation', 'Chafifah, chatzitzot, immersion, prayer, appointments, and preparation for Shabbat and Yom Tov.'],
-    [11, 4, 'Mikvah and Calendar', 2, 'The Jewish Calendar', 'Tracking the cycle, calculating the required onot, using an app, and preparing for separation and mikvah.'],
-    [12, 4, 'Mikvah and Calendar', 3, 'Personal Resources', 'Customized dates, reminders, mikvah information, trusted contacts, helpful apps, prayers, and books.']
+    [1, 1, "Foundations", 1, "Getting Started", "Your Hebrew name, wedding date, chatan's rabbi, family minhag, and the dates and contacts you will need."],
+    [2, 1, "Foundations", 2, "Why This Mitzvah", "Before the laws: why Hashem created the world, and what that means for Jewish marriage."],
+    [3, 1, "Foundations", 3, "The Spiritual Purpose", "Our mission and partnership with Hashem, and bridging heaven and earth."],
+    [4, 1, "Foundations", 4, "Adam and Chava", "The spiritual roots of marriage: two halves of one soul, free choice, and becoming one."],
+    [5, 2, "The Jewish Woman", 1, "The Mitzvot", "Matan Torah, the 613 mitzvot, and the three mitzvot given to women: challah, niddah, and Shabbat candles."],
+    [6, 2, "The Jewish Woman", 2, "A Woman's Power", "Chana, Rivka, the women in Egypt, and the akeret habayit who sets the spirit of her home."],
+    [7, 3, "Family Purity", 1, "Tumah and Taharah", "What tumah and taharah really mean, and why a woman becomes niddah."],
+    [8, 3, "Family Purity", 2, "Hefsek Taharah and the Seven Clean Days", "The Jewish day, the hefsek taharah, the seven clean days, and bedikot."],
+    [9, 3, "Family Purity", 3, "Mikvah and Preparation", "Chafifah, chatzitzot, immersion, tefillot, and preparing for Shabbat and Yom Tov."],
+    [10, 3, "Family Purity", 4, "Becoming Niddah", "The ways a woman becomes niddah, ketamim and colors, and when to ask a rav."],
+    [11, 3, "Family Purity", 5, "Harchakot", "Guidelines for the niddah period at home, while traveling, and Sephardic customs."],
+    [12, 3, "Family Purity", 6, "The Calendar", "The onot, separation days, and keeping your calendar with an app."],
+    [13, 4, "Marriage", 1, "The Wedding", "The spiritual meaning of the chuppah, the first mikvah, and the wedding night."],
+    [14, 4, "Marriage", 2, "Relationship and Intimacy", "Bringing Hashem into your marriage with holiness, closeness, communication, and dignity."]
   ];
   var SAMPLE_BODY = function (title) {
     return '## ' + title + '\n\n*Sample lesson text for the preview. The real lesson will be written by the teacher.*\n\n' +
@@ -58,7 +60,7 @@
 
   var db = {
     lessons: LESSONS.map(function (l) {
-      var open = l[0] <= 6;
+      var open = l[0] <= 7;
       return { id: l[0], part: l[1], part_title: l[2], position: l[3], title: l[4], summary: l[5],
         body: open ? SAMPLE_BODY(l[4]) : '', video_url: null, published: true,
         created_at: iso(30), updated_at: iso(2) };
