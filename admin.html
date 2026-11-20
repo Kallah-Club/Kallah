@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Teacher Dashboard · The Kallah Club</title>
+<title>Dashboard · The Kallah Club</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,7 @@
 <script src="preview.js"></script>
 <script src="app.js"></script>
 <script>
-/* The teacher dashboard. This page is public HTML, but every query below is
+/* The admin dashboard (the owner, Rabbanit Rachel Benchimol). This page is public HTML, but every query below is
    checked by Row Level Security in the database: only an account whose
    profiles.role is 'admin' gets any student, waitlist or draft data back. */
 (function () {
@@ -160,7 +160,7 @@
   function vStudents() {
     var q = h('input', { class: 'input', type: 'search', placeholder: 'Search by name, email or phone', 'aria-label': 'Search students' });
     var tbody = h('tbody');
-    var all = students(); // teachers are not listed or exported
+    var all = students(); // admins are not listed or exported
     function paint() {
       var term = q.value.trim().toLowerCase();
       var list = all.filter(function (p) { var digits = term.replace(/\D/g, ''); return !term || (p.full_name || '').toLowerCase().indexOf(term) >= 0 || (p.email || '').toLowerCase().indexOf(term) >= 0 || (digits.length >= 3 && (p.phone || '').replace(/\D/g, '').indexOf(digits) >= 0); });
@@ -469,7 +469,7 @@
   function denied() {
     KC.clear(app).appendChild(h('div', { class: 'wrap' }, h('div', { class: 'panel denied' },
       h('div', { class: 'success-mark' }, icon('lock')),
-      h('p', { class: 'script' }, 'Teachers only'),
+      h('p', { class: 'script' }, 'Admin only'),
       h('h1', { class: 'display' }, 'Access restricted'),
       h('p', null, 'This dashboard is for Rabbanit Rachel. Your course is waiting for you.'),
       h('a', { class: 'btn', href: 'course.html' }, 'Go to my course'))));

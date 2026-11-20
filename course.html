@@ -81,7 +81,7 @@
     ]);
     state.profile = res[0];
     [res[1], res[2], res[3]].forEach(function (r) { if (r.error) throw r.error; });
-    // Teachers see drafts here too (marked), students only ever receive published lessons.
+    // Admins see drafts here too (marked), students only ever receive published lessons.
     state.lessons = res[1].data.map(function (l, i) { l._n = i + 1; return l; });
     state.progress = {};
     res[2].data.forEach(function (p) { state.progress[p.lesson_id] = p; });
@@ -159,7 +159,7 @@
         ? h('div', { class: 'ann-list' }, state.announcements.map(function (a) {
             return h('article', { class: 'ann' }, h('time', { datetime: a.created_at }, KC.fmtDate(a.created_at)), h('h4', null, a.title), a.body ? h('p', null, a.body) : null);
           }))
-        : h('p', { class: 'muted small' }, 'Messages and updates from your teacher will appear here.'));
+        : h('p', { class: 'muted small' }, 'Messages and updates from Rachel will appear here.'));
 
     var units = h('div', { class: 'units' }, parts().map(function (p) {
       var avail = p.lessons.filter(ready);
