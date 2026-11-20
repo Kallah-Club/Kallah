@@ -224,7 +224,8 @@
     var p = opts.profile || {};
     var links = [
       h('a', { href: 'course.html', 'data-nav': '', class: opts.active === 'course' ? 'on' : null }, 'My course'),
-      h('a', { href: 'course.html?view=profile', 'data-nav': '', class: opts.active === 'profile' ? 'on' : null }, 'Profile')
+      h('a', { href: 'course.html?view=profile', 'data-nav': '', class: opts.active === 'profile' ? 'on' : null }, 'Profile'),
+      h('a', { href: 'library.html', class: opts.active === 'library' ? 'on' : null }, 'Library')
     ];
     if (p.role === 'admin') links.push(h('a', { href: 'admin.html', class: opts.active === 'admin' ? 'on' : null }, 'Dashboard'));
     var initials = ((p.full_name || p.email || '?').trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2) || '?').toUpperCase();

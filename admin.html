@@ -32,7 +32,7 @@
   var sb = KC.sb, h = KC.h, icon = KC.icon;
   var app = document.getElementById('app');
   var PART_WORDS = ['Part one', 'Part two', 'Part three', 'Part four', 'Part five', 'Part six', 'Part seven', 'Part eight'];
-  var S = { user: null, profile: null, profiles: [], progress: [], lessons: [], waitlist: [], announcements: [], tab: 'overview', editing: null };
+  var S = { user: null, profile: null, profiles: [], progress: [], lessons: [], waitlist: [], announcements: [], resources: [], editRes: null, tab: 'overview', editing: null };
   var main, nav;
   var dirty = false; // unsaved changes in the lesson editor
 
@@ -62,20 +62,22 @@
       KC.fetchAll(function () { return sb.from('lesson_progress').select('user_id, lesson_id, completed_at, last_viewed_at').order('user_id').order('lesson_id'); }),
       KC.fetchAll(function () { return sb.from('lessons').select('*').order('part').order('position').order('id'); }),
       KC.fetchAll(function () { return sb.from('waitlist').select('id, email, created_at').order('created_at', { ascending: false }).order('id'); }),
-      KC.fetchAll(function () { return sb.from('announcements').select('*').order('created_at', { ascending: false }).order('id'); })
+      KC.fetchAll(function () { return sb.from('announcements').select('*').order('created_at', { ascending: false }).order('id'); }),
+      KC.fetchAll(function () { return sb.from('resources').select('*').order('kind').order('position').order('id'); })
     ]);
-    S.profiles = r[0]; S.progress = r[1]; S.lessons = r[2]; S.waitlist = r[3]; S.announcements = r[4];
+    S.profiles = r[0]; S.progress = r[1]; S.lessons = r[2]; S.waitlist = r[3]; S.announcements = r[4]; S.resources = r[5];
   }
 
   /* ------------------------------------------------------------ shell */
   var TABS = [
-    ['overview', 'Overview'], ['students', 'Students'], ['waitlist', 'Waitlist'], ['lessons', 'Lessons'], ['announcements', 'Announcements']
+    ['overview', 'Overview'], ['students', 'Students'], ['waitlist', 'Waitlist'], ['lessons', 'Lessons'], ['library', 'Library'], ['announcements', 'Announcements']
   ];
   function counts(k) {
     if (k === 'students') return students().length;
     if (k === 'waitlist') return S.waitlist.length;
     if (k === 'lessons') return S.lessons.length;
     if (k === 'announcements') return S.announcements.length;
+    if (k === 'library') return S.resources.length;
     return null;
   }
   function renderNav() {
@@ -98,11 +100,11 @@
     opts = opts || {};
     if (!opts.force && !confirmLeave()) { renderNav(); return; }
     S.tab = tab;
-    if (!opts.keepEdit) S.editing = null;
+    if (!opts.keepEdit) { S.editing = null; S.editRes = null; }
     try { history.replaceState(null, '', 'admin.html' + (tab === 'overview' ? '' : '#' + tab)); } catch (e) {}
     renderNav();
     KC.clear(main);
-    ({ overview: vOverview, students: vStudents, waitlist: vWaitlist, lessons: vLessons, announcements: vAnnouncements })[tab]();
+    ({ overview: vOverview, students: vStudents, waitlist: vWaitlist, lessons: vLessons, library: vLibrary, announcements: vAnnouncements })[tab]();
     if (window.innerWidth < 880) window.scrollTo(0, 0);
     if (opts.focus) {
       var t = main.querySelector('h1');
@@ -459,6 +461,92 @@
     main.appendChild(head('Share with your kallahs', 'Announcements'));
     main.appendChild(form);
     main.appendChild(h('h2', { class: 'display', style: 'font-size:18px;margin:40px 0 14px' }, 'Posted'));
+    main.appendChild(list);
+  }
+
+  /* ------------------------------------------------------------ library */
+  var RES_KINDS = [['class', 'Class'], ['book', 'Book'], ['app', 'App or tool'], ['printable', 'Printable'], ['contact', 'Helpful contact'], ['link', 'Other link']];
+  function kindName(k) { var f = RES_KINDS.filter(function (x) { return x[0] === k; })[0]; return f ? f[1] : 'Resource'; }
+  function vLibrary() {
+    var r0 = S.editRes ? S.resources.filter(function (x) { return x.id === S.editRes; })[0] : null;
+    var v = r0 || { kind: 'book', title: '', author: '', description: '', url: '', price_note: '', position: 100, members_only: false, published: true };
+    var kind = h('select', null, RES_KINDS.map(function (k) { return h('option', { value: k[0], selected: v.kind === k[0] ? true : null }, k[1]); }));
+    var title = h('input', { type: 'text', maxlength: '160', value: v.title || '', placeholder: 'e.g. Waters of Eden' });
+    var author = h('input', { type: 'text', maxlength: '120', value: v.author || '', placeholder: 'Author or teacher (optional)' });
+    var desc = h('textarea', { maxlength: '1200', rows: '3', placeholder: 'A short note from you: why you recommend it' });
+    desc.value = v.description || '';
+    var url = h('input', { type: 'url', maxlength: '600', value: v.url || '', placeholder: 'https://… (optional)' });
+    var price = h('input', { type: 'text', maxlength: '60', value: v.price_note || '', placeholder: 'e.g. Free for members, or $18 (optional)' });
+    var pos = h('input', { type: 'number', min: '0', max: '9999', step: '1', value: String(v.position == null ? 100 : v.position) });
+    var mem = h('input', { type: 'checkbox', checked: v.members_only ? true : null });
+    var pub = h('input', { type: 'checkbox', checked: v.published ? true : null });
+    var note = h('p', { class: 'note', role: 'status' });
+    var btn = h('button', { class: 'btn', type: 'submit' }, r0 ? 'Save changes' : 'Add to library');
+    var cancel = r0 ? h('button', { class: 'btn line', type: 'button', onclick: function () { S.editRes = null; go('library'); } }, 'Cancel') : null;
+    var form = h('form', { class: 'panel form-grid', novalidate: true },
+      h('div', { class: 'form-row' }, h('label', { class: 'field' }, h('span', null, 'Type'), kind), h('label', { class: 'field' }, h('span', null, 'Order'), pos, h('small', { class: 'hint' }, 'Lower numbers show first.'))),
+      h('label', { class: 'field' }, h('span', null, 'Title'), title),
+      h('label', { class: 'field' }, h('span', null, 'By'), author),
+      h('label', { class: 'field' }, h('span', null, 'Your note'), desc),
+      h('div', { class: 'form-row' }, h('label', { class: 'field' }, h('span', null, 'Link'), url), h('label', { class: 'field' }, h('span', null, 'Price or note'), price)),
+      h('label', { class: 'check' }, pub, 'Show in the library'),
+      h('label', { class: 'check' }, mem, 'Members only (visible after logging in)'),
+      h('div', { class: 'actions' }, btn, cancel, note));
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      if (btn.disabled) return;
+      var u = url.value.trim();
+      if (!title.value.trim()) { note.className = 'note err'; note.textContent = 'Please add a title.'; title.focus(); return; }
+      if (u && !/^https:\/\//i.test(u)) { note.className = 'note err'; note.textContent = 'Links need to start with https://'; url.focus(); return; }
+      var row = { kind: kind.value, title: title.value.trim(), author: author.value.trim() || null, description: desc.value.trim() || null,
+        url: u || null, price_note: price.value.trim() || null, position: parseInt(pos.value, 10) || 0, members_only: mem.checked, published: pub.checked };
+      btn.disabled = true; note.className = 'note'; note.textContent = 'Saving…';
+      var r = r0 ? await sb.from('resources').update(row).eq('id', r0.id).select().single() : await sb.from('resources').insert(row).select().single();
+      btn.disabled = false;
+      if (r.error) { note.className = 'note err'; note.textContent = KC.friendlyError(r.error); return; }
+      if (r0) S.resources[S.resources.indexOf(r0)] = r.data; else S.resources.push(r.data);
+      S.resources.sort(function (a, b) { return a.kind < b.kind ? -1 : a.kind > b.kind ? 1 : (a.position - b.position) || (a.id - b.id); });
+      S.editRes = null;
+      KC.toast(r0 ? 'Saved.' : 'Added to the library.');
+      go('library', { force: true });
+    });
+
+    var groups = RES_KINDS.filter(function (k) { return S.resources.some(function (x) { return x.kind === k[0]; }); });
+    var list = h('div', null, groups.length ? groups.map(function (k) {
+      return h('div', { style: 'margin-bottom:22px' },
+        h('p', { class: 'label', style: 'margin:0 0 8px' }, kindName(k[0]) + 's'),
+        h('div', { class: 'card', style: 'padding:4px 20px' }, S.resources.filter(function (x) { return x.kind === k[0]; }).map(function (x) {
+          return h('article', { class: 'ann' },
+            h('div', { style: 'display:flex;justify-content:space-between;gap:12px;align-items:start;flex-wrap:wrap' },
+              h('div', { style: 'min-width:0' },
+                h('span', { class: 'tag ' + (x.published ? 'pub' : 'draft') }, x.published ? 'Visible' : 'Hidden'), ' ',
+                x.members_only ? h('span', { class: 'tag admin' }, 'Members') : null,
+                h('h4', null, x.title), x.author ? h('small', { class: 'muted' }, x.author) : null),
+              h('div', { class: 'actions' },
+                h('button', { class: 'btn line small', type: 'button', onclick: function () { S.editRes = x.id; go('library', { keepEdit: true }); window.scrollTo(0, 0); } }, 'Edit'),
+                h('button', { class: 'btn line small', type: 'button', onclick: once(async function () {
+                  var r = await sb.from('resources').update({ published: !x.published }).eq('id', x.id).select().single();
+                  if (r.error) return fail(r.error);
+                  S.resources[S.resources.indexOf(x)] = r.data;
+                  KC.toast(r.data.published ? 'Now showing in the library.' : 'Hidden from the library.');
+                  go('library');
+                }) }, x.published ? 'Hide' : 'Show'),
+                h('button', { class: 'btn danger small', type: 'button', onclick: once(async function () {
+                  if (!confirm('Delete "' + x.title + '"? This cannot be undone.')) return;
+                  var r = await sb.from('resources').delete().eq('id', x.id);
+                  if (r.error) return fail(r.error);
+                  S.resources = S.resources.filter(function (y) { return y.id !== x.id; });
+                  KC.toast('Deleted.');
+                  go('library');
+                }) }, 'Delete'))),
+            x.description ? h('p', null, x.description) : null);
+        })));
+    }) : h('p', { class: 'empty' }, 'Nothing in the library yet. Add your first class, book or resource above.'));
+
+    main.appendChild(head('Classes, books and resources', 'Library', h('a', { class: 'btn line small', href: 'library.html', target: '_blank', rel: 'noopener' }, 'View library')));
+    main.appendChild(h('h2', { class: 'display', style: 'font-size:18px;margin:0 0 14px' }, r0 ? 'Edit "' + r0.title + '"' : 'Add something new'));
+    main.appendChild(form);
+    main.appendChild(h('h2', { class: 'display', style: 'font-size:18px;margin:40px 0 14px' }, 'In the library'));
     main.appendChild(list);
   }
 

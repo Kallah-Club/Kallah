@@ -34,7 +34,8 @@ Keep the `CNAME` file (it holds `thekallahclub.com`); deleting it breaks the dom
 | `index.html` | Landing page (one big self-contained file; one line is a huge base64 logo, so edit with targeted replacements, never rewrite the file). Has the waitlist form and a "Log in" nav link. |
 | `account.html` | Log in, create account (first name, last name, phone, email, password), forgot / reset password, "check your inbox", "link expired". |
 | `course.html` | Student area: course home (progress ring, wedding countdown, continue card, announcements, 12 lessons in 4 parts), lesson view `?lesson=ID`, profile `?view=profile`. |
-| `admin.html` | Admin dashboard for the owner: Overview, Students (search, CSV), Waitlist (CSV), Lessons (editor, publish), Announcements. Only admins get data. |
+| `admin.html` | Admin dashboard for the owner: Overview, Students (search, CSV), Waitlist (CSV), Lessons (editor, publish), Library, Announcements. Only admins get data. |
+| `library.html` | Public Library: classes, books, apps, printables, helpful contacts (from `resources`). Members-only items appear after logging in. |
 | `app.js` | Shared code: Supabase client, auth guards, DOM helper `h()`, sanitizer, CSV export. |
 | `app.css` | Shared styles for the app pages. |
 | `preview.js` | Preview mode with fake sample data (see below). |
@@ -63,6 +64,7 @@ Tables in `public` (all have Row Level Security on):
   owner writes it; empty published lessons show as locked "Coming soon".
 - `lesson_progress`: per student per lesson (`completed_at`, `last_viewed_at`).
 - `announcements`: posts from the owner shown on the course home.
+- `resources`: Library items (kind: class, book, app, printable, contact, link). Visitors read published public items, members also read members-only ones, only admins edit. Managed in the dashboard's Library tab.
 - `waitlist`: emails from the landing page. Visitors can only add; only admins can read.
 
 Helpers live in the `private` schema (not reachable from the website):

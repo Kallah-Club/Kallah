@@ -78,6 +78,13 @@
     waitlist: [
       'devorah', 'yael', 'tova', 'shira', 'noa', 'batsheva', 'aviva', 'hadassah'
     ].map(function (n, i) { return { id: i + 1, email: n + '.sample@example.com', created_at: iso(i * 2 + 1, 9 + i) }; }),
+    resources: [
+      { id: 1, kind: 'class', title: 'Shalom Bayit Evening (sample)', author: 'Rabbanit Rachel Benchimol', description: 'Sample class: a warm evening for married women on keeping the spark alive.', url: null, price_note: 'Members free', members_only: false, published: true, position: 10 },
+      { id: 2, kind: 'book', title: 'Waters of Eden: The Mystery of the Mikvah', author: 'Rabbi Aryeh Kaplan', description: 'A short, beautiful book on the meaning of the mikvah.', url: null, price_note: null, members_only: false, published: true, position: 10 },
+      { id: 3, kind: 'book', title: 'The Secret of Jewish Femininity', author: 'Tehilla Abramov', description: 'A warm classic on family purity and the beauty of Jewish marriage.', url: null, price_note: null, members_only: false, published: true, position: 20 },
+      { id: 4, kind: 'printable', title: 'Wedding Master Checklist (sample)', author: null, description: 'Sample printable for members.', url: null, price_note: 'Members', members_only: true, published: true, position: 10 },
+      { id: 5, kind: 'contact', title: 'Mikvah directory', author: null, description: 'Find a mikvah near you, with hours and contact details.', url: 'https://mikvah.org/directory', price_note: null, members_only: false, published: true, position: 10 }
+    ],
     announcements: [
       { id: 1, title: 'Welcome to The Kallah Club', body: 'Sample announcement: I am so glad you are here. Start with lesson one and go at your own pace.', published: true, created_at: iso(6) },
       { id: 2, title: 'New lessons this week', body: 'Sample announcement: Part two, The Jewish Home, is now open.', published: true, created_at: iso(2) }
