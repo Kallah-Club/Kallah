@@ -64,13 +64,13 @@
         created_at: iso(30), updated_at: iso(2) };
     }),
     profiles: [
-      { id: ME, email: 'preview@example.com', full_name: 'Preview Kallah', wedding_date: dateOnly(74), role: 'admin', created_at: iso(30) },
-      { id: 's1', email: 'chana.sample@example.com', full_name: 'Chana Levi', wedding_date: dateOnly(41), role: 'student', created_at: iso(21) },
-      { id: 's2', email: 'rivka.sample@example.com', full_name: 'Rivka Cohen', wedding_date: dateOnly(96), role: 'student', created_at: iso(18) },
-      { id: 's3', email: 'leah.sample@example.com', full_name: 'Leah Mizrahi', wedding_date: dateOnly(23), role: 'student', created_at: iso(12) },
-      { id: 's4', email: 'sarah.sample@example.com', full_name: 'Sarah Benhamou', wedding_date: dateOnly(150), role: 'student', created_at: iso(9) },
-      { id: 's5', email: 'miriam.sample@example.com', full_name: 'Miriam Azoulay', wedding_date: null, role: 'student', created_at: iso(4) },
-      { id: 's6', email: 'esther.sample@example.com', full_name: 'Esther Katz', wedding_date: dateOnly(58), role: 'student', created_at: iso(1) }
+      { id: ME, email: 'preview@example.com', full_name: 'Preview Kallah', first_name: 'Preview', last_name: 'Kallah', phone: '(917) 555-0101', wedding_date: dateOnly(74), role: 'admin', created_at: iso(30) },
+      { id: 's1', email: 'chana.sample@example.com', full_name: 'Chana Levi', first_name: 'Chana', last_name: 'Levi', phone: '(917) 555-0102', wedding_date: dateOnly(41), role: 'student', created_at: iso(21) },
+      { id: 's2', email: 'rivka.sample@example.com', full_name: 'Rivka Cohen', first_name: 'Rivka', last_name: 'Cohen', phone: '(917) 555-0103', wedding_date: dateOnly(96), role: 'student', created_at: iso(18) },
+      { id: 's3', email: 'leah.sample@example.com', full_name: 'Leah Mizrahi', first_name: 'Leah', last_name: 'Mizrahi', phone: '(917) 555-0104', wedding_date: dateOnly(23), role: 'student', created_at: iso(12) },
+      { id: 's4', email: 'sarah.sample@example.com', full_name: 'Sarah Benhamou', first_name: 'Sarah', last_name: 'Benhamou', phone: '(917) 555-0105', wedding_date: dateOnly(150), role: 'student', created_at: iso(9) },
+      { id: 's5', email: 'miriam.sample@example.com', full_name: 'Miriam Azoulay', first_name: 'Miriam', last_name: 'Azoulay', phone: '(917) 555-0106', wedding_date: null, role: 'student', created_at: iso(4) },
+      { id: 's6', email: 'esther.sample@example.com', full_name: 'Esther Katz', first_name: 'Esther', last_name: 'Katz', phone: '(917) 555-0107', wedding_date: dateOnly(58), role: 'student', created_at: iso(1) }
     ],
     lesson_progress: [],
     waitlist: [

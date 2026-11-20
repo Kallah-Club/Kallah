@@ -315,13 +315,18 @@
     renderBar('profile');
     document.title = 'Profile · The Kallah Club';
     var p = state.profile;
-    var name = h('input', { type: 'text', name: 'full_name', maxlength: '120', autocomplete: 'name', value: p.full_name || '' });
+    var first = h('input', { type: 'text', name: 'first_name', maxlength: '60', autocomplete: 'given-name', value: p.first_name || '' });
+    var last = h('input', { type: 'text', name: 'last_name', maxlength: '60', autocomplete: 'family-name', value: p.last_name || '' });
+    var phone = h('input', { type: 'tel', name: 'phone', maxlength: '30', autocomplete: 'tel', inputmode: 'tel', value: p.phone || '' });
     var date = h('input', { type: 'date', name: 'wedding_date', value: p.wedding_date || '' });
     var email = h('input', { type: 'email', value: state.user.email || p.email || '', readonly: true, 'aria-readonly': 'true' });
     var note = h('p', { class: 'note', role: 'status' });
     var save = h('button', { class: 'btn', type: 'submit' }, 'Save changes');
     var form = h('form', { class: 'form-grid', novalidate: true },
-      h('label', { class: 'field' }, h('span', null, 'Your name'), name),
+      h('div', { class: 'form-row' },
+        h('label', { class: 'field' }, h('span', null, 'First name'), first),
+        h('label', { class: 'field' }, h('span', null, 'Last name'), last)),
+      h('label', { class: 'field' }, h('span', null, 'Phone number'), phone),
       h('div', { class: 'form-row' },
         h('label', { class: 'field' }, h('span', null, 'Wedding date'), date, h('small', { class: 'hint' }, 'We use it for your countdown.')),
         h('label', { class: 'field' }, h('span', null, 'Email'), email, h('small', { class: 'hint' }, 'Your log in email.'))),
@@ -329,11 +334,15 @@
     form.addEventListener('submit', async function (e) {
       e.preventDefault();
       save.disabled = true; note.className = 'note'; note.textContent = 'Saving…';
-      var upd = { full_name: name.value.trim().slice(0, 120) || null, wedding_date: date.value || null };
-      var r = await sb.from('profiles').update(upd).eq('id', state.user.id).select('full_name, wedding_date').single();
+      var ph = phone.value.trim(), digits = ph.replace(/\D/g, '');
+      if (ph && (!/^[0-9+()\-. ]+$/.test(ph) || digits.length < 7 || digits.length > 15)) {
+        save.disabled = false; note.className = 'note err'; note.textContent = 'Enter a valid phone number.'; phone.focus(); return;
+      }
+      var upd = { first_name: first.value.trim().slice(0, 60) || null, last_name: last.value.trim().slice(0, 60) || null, phone: ph.slice(0, 30) || null, wedding_date: date.value || null };
+      var r = await sb.from('profiles').update(upd).eq('id', state.user.id).select('first_name, last_name, full_name, phone, wedding_date').single();
       save.disabled = false;
       if (r.error) { note.className = 'note err'; note.textContent = KC.friendlyError(r.error); return; }
-      state.profile.full_name = r.data.full_name; state.profile.wedding_date = r.data.wedding_date;
+      Object.assign(state.profile, r.data);
       note.className = 'note ok'; note.textContent = 'Saved.';
       renderBar('profile');
       KC.toast('Your profile has been updated.');

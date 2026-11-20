@@ -58,7 +58,7 @@
      stay right however many students and waitlist sign-ups there are. */
   async function loadAll() {
     var r = await Promise.all([
-      KC.fetchAll(function () { return sb.from('profiles').select('id, email, full_name, wedding_date, role, created_at').order('created_at', { ascending: false }).order('id'); }),
+      KC.fetchAll(function () { return sb.from('profiles').select('id, email, first_name, last_name, full_name, phone, wedding_date, role, created_at').order('created_at', { ascending: false }).order('id'); }),
       KC.fetchAll(function () { return sb.from('lesson_progress').select('user_id, lesson_id, completed_at, last_viewed_at').order('user_id').order('lesson_id'); }),
       KC.fetchAll(function () { return sb.from('lessons').select('*').order('part').order('position').order('id'); }),
       KC.fetchAll(function () { return sb.from('waitlist').select('id, email, created_at').order('created_at', { ascending: false }).order('id'); }),
@@ -158,18 +158,18 @@
 
   /* ------------------------------------------------------------ students */
   function vStudents() {
-    var q = h('input', { class: 'input', type: 'search', placeholder: 'Search by name or email', 'aria-label': 'Search students' });
+    var q = h('input', { class: 'input', type: 'search', placeholder: 'Search by name, email or phone', 'aria-label': 'Search students' });
     var tbody = h('tbody');
     var all = students(); // teachers are not listed or exported
     function paint() {
       var term = q.value.trim().toLowerCase();
-      var list = all.filter(function (p) { return !term || (p.full_name || '').toLowerCase().indexOf(term) >= 0 || (p.email || '').toLowerCase().indexOf(term) >= 0; });
+      var list = all.filter(function (p) { var digits = term.replace(/\D/g, ''); return !term || (p.full_name || '').toLowerCase().indexOf(term) >= 0 || (p.email || '').toLowerCase().indexOf(term) >= 0 || (digits.length >= 3 && (p.phone || '').replace(/\D/g, '').indexOf(digits) >= 0); });
       KC.clear(tbody);
       if (!list.length) { tbody.appendChild(h('tr', null, h('td', { colspan: '5', class: 'empty' }, all.length ? 'No students match your search.' : 'No students yet.'))); return; }
       list.forEach(function (p) {
         var s = studentStats(p.id);
         tbody.appendChild(h('tr', null,
-          h('td', { 'data-label': 'Student' }, h('div', null, h('span', { class: 'strong' }, p.full_name || '—'), h('br'), h('small', { class: 'muted' }, p.email || ''))),
+          h('td', { 'data-label': 'Student' }, h('div', null, h('span', { class: 'strong' }, p.full_name || '—'), h('br'), h('small', { class: 'muted' }, p.email || ''), p.phone ? h('br') : null, p.phone ? h('small', { class: 'muted' }, p.phone) : null)),
           h('td', { 'data-label': 'Wedding' }, p.wedding_date ? KC.fmtDate(p.wedding_date) : '—'),
           h('td', { 'data-label': 'Progress' }, h('span', null, h('span', { class: 'bar' }, h('i', { style: 'width:' + s.pct.toFixed(1) + '%' })), s.done + '/' + s.total)),
           h('td', { 'data-label': 'Last active' }, s.last ? KC.relTime(s.last) : 'Not started'),
@@ -178,8 +178,8 @@
     }
     q.addEventListener('input', paint);
     function exportCsv() {
-      var rows = [['Name', 'Email', 'Wedding date', 'Lessons completed', 'Open lessons', 'Last active', 'Joined']];
-      all.forEach(function (p) { var s = studentStats(p.id); rows.push([p.full_name || '', p.email || '', p.wedding_date || '', s.done, s.total, s.last || '', p.created_at]); });
+      var rows = [['First name', 'Last name', 'Email', 'Phone', 'Wedding date', 'Lessons completed', 'Open lessons', 'Last active', 'Joined']];
+      all.forEach(function (p) { var s = studentStats(p.id); rows.push([p.first_name || p.full_name || '', p.last_name || '', p.email || '', p.phone || '', p.wedding_date || '', s.done, s.total, s.last || '', p.created_at]); });
       KC.downloadCsv('kallah-club-students-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
     }
     main.appendChild(head('Your kallahs', 'Students', h('button', { class: 'btn line small', type: 'button', onclick: exportCsv, disabled: !all.length }, icon('download'), 'Export CSV')));

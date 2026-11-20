@@ -43,7 +43,11 @@
       </form>
 
       <form id="form-signup" novalidate hidden>
-        <label class="field"><span>Your name</span><input type="text" name="full_name" autocomplete="name" required maxlength="120" placeholder="First and last name"></label>
+        <div class="form-row tight">
+          <label class="field"><span>First name</span><input type="text" name="first_name" autocomplete="given-name" required maxlength="60"></label>
+          <label class="field"><span>Last name</span><input type="text" name="last_name" autocomplete="family-name" required maxlength="60"></label>
+        </div>
+        <label class="field"><span>Phone number</span><input type="tel" name="phone" autocomplete="tel" inputmode="tel" required maxlength="30" placeholder="(917) 555-0123"></label>
         <label class="field"><span>Email</span><input type="email" name="email" autocomplete="email" required placeholder="you@example.com"></label>
         <label class="field"><span>Password</span>
           <div class="pw"><input type="password" name="password" autocomplete="new-password" required minlength="8"><button class="toggle" type="button" aria-label="Show password">Show</button></div>
@@ -232,15 +236,25 @@
   // Sign up
   document.getElementById('form-signup').addEventListener('submit', async function (e) {
     e.preventDefault();
-    var f = e.target, name = f.full_name, email = f.email, pw = f.password;
-    if (!name.value.trim()) { note(f, 'Please tell us your name.', 'err'); name.focus(); return; }
+    var f = e.target, first = f.first_name, last = f.last_name, phone = f.phone, email = f.email, pw = f.password;
+    if (!first.value.trim()) { note(f, 'Please enter your first name.', 'err'); first.focus(); return; }
+    if (!last.value.trim()) { note(f, 'Please enter your last name.', 'err'); last.focus(); return; }
+    var digits = phone.value.replace(/\D/g, '');
+    if (!/^[0-9+()\-. ]+$/.test(phone.value.trim()) || digits.length < 7 || digits.length > 15) { note(f, 'Enter a valid phone number.', 'err'); phone.focus(); return; }
     if (!validEmail(email)) { note(f, 'Enter a valid email address.', 'err'); email.focus(); return; }
     if (pw.value.length < 8) { note(f, 'Please choose a password of at least 8 characters.', 'err'); pw.focus(); return; }
     busy(f, true, 'Creating your account…'); note(f, '');
     var r = await sb.auth.signUp({
       email: email.value.trim(),
       password: pw.value,
-      options: { data: { full_name: name.value.trim().slice(0, 120) }, emailRedirectTo: CONFIRM_URL }
+      options: {
+        data: {
+          first_name: first.value.trim().slice(0, 60),
+          last_name: last.value.trim().slice(0, 60),
+          phone: phone.value.trim().slice(0, 30)
+        },
+        emailRedirectTo: CONFIRM_URL
+      }
     });
     busy(f, false);
     if (r.error) { note(f, KC.friendlyError(r.error), 'err'); return; }

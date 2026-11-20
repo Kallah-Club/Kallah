@@ -97,6 +97,7 @@ button { font: inherit; }
 .check input { width: 20px; height: 20px; accent-color: var(--copper); }
 .form-grid { display: grid; gap: 18px; }
 .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+.form-row.tight { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
 .note { font-size: 14px; color: var(--copper-ink); min-height: 1.4em; }
 .note.err { color: var(--warn); }
 .note.ok { color: var(--ok); }

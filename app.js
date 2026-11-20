@@ -169,7 +169,7 @@
     return r.data ? r.data.session : null;
   }
   async function getProfile(user) {
-    var r = await sb.from('profiles').select('id, email, full_name, wedding_date, role, created_at').eq('id', user.id).maybeSingle();
+    var r = await sb.from('profiles').select('id, email, first_name, last_name, full_name, phone, wedding_date, role, created_at').eq('id', user.id).maybeSingle();
     if (r.error) throw r.error;
     return r.data || { id: user.id, email: user.email, full_name: '', wedding_date: null, role: 'student' };
   }
