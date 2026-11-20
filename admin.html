@@ -101,7 +101,7 @@
     if (!opts.force && !confirmLeave()) { renderNav(); return; }
     S.tab = tab;
     if (!opts.keepEdit) { S.editing = null; S.editRes = null; }
-    try { history.replaceState(null, '', 'admin.html' + (tab === 'overview' ? '' : '#' + tab)); } catch (e) {}
+    try { history.replaceState(null, '', 'admin' + (tab === 'overview' ? '' : '#' + tab)); } catch (e) {}
     renderNav();
     KC.clear(main);
     ({ overview: vOverview, students: vStudents, waitlist: vWaitlist, lessons: vLessons, library: vLibrary, announcements: vAnnouncements })[tab]();
@@ -159,10 +159,21 @@
   }
 
   /* ------------------------------------------------------------ students */
+  /* Admin access is changed through a database function that only admins can
+     call (you can't remove yourself, and there is always at least one admin). */
+  async function setRole(p, role) {
+    var who = p.full_name || p.email || 'this member';
+    if (!confirm(role === 'admin' ? 'Give ' + who + ' full admin access to the dashboard?' : 'Remove admin access from ' + who + '?')) return;
+    var r = await sb.rpc('set_member_role', { target: p.id, new_role: role });
+    if (r.error) return fail(r.error);
+    p.role = role;
+    KC.toast(role === 'admin' ? who + ' is now an admin.' : who + ' is no longer an admin.');
+    go('students');
+  }
   function vStudents() {
     var q = h('input', { class: 'input', type: 'search', placeholder: 'Search by name, email or phone', 'aria-label': 'Search students' });
     var tbody = h('tbody');
-    var all = students(); // admins are not listed or exported
+    var all = students(); // admins are listed separately and not exported
     function paint() {
       var term = q.value.trim().toLowerCase();
       var list = all.filter(function (p) { var digits = term.replace(/\D/g, ''); return !term || (p.full_name || '').toLowerCase().indexOf(term) >= 0 || (p.email || '').toLowerCase().indexOf(term) >= 0 || (digits.length >= 3 && (p.phone || '').replace(/\D/g, '').indexOf(digits) >= 0); });
@@ -175,7 +186,8 @@
           h('td', { 'data-label': 'Wedding' }, p.wedding_date ? KC.fmtDate(p.wedding_date) : '—'),
           h('td', { 'data-label': 'Progress' }, h('span', null, h('span', { class: 'bar' }, h('i', { style: 'width:' + s.pct.toFixed(1) + '%' })), s.done + '/' + s.total)),
           h('td', { 'data-label': 'Last active' }, s.last ? KC.relTime(s.last) : 'Not started'),
-          h('td', { 'data-label': 'Joined' }, KC.fmtDate(p.created_at))));
+          h('td', { 'data-label': 'Joined' }, KC.fmtDate(p.created_at), h('br'),
+            h('button', { class: 'linkbtn small', type: 'button', onclick: once(function () { return setRole(p, 'admin'); }) }, 'Make admin'))));
       });
     }
     q.addEventListener('input', paint);
@@ -185,6 +197,14 @@
       KC.downloadCsv('kallah-club-students-' + new Date().toISOString().slice(0, 10) + '.csv', rows);
     }
     main.appendChild(head('Your kallahs', 'Students', h('button', { class: 'btn line small', type: 'button', onclick: exportCsv, disabled: !all.length }, icon('download'), 'Export CSV')));
+    var admins = S.profiles.filter(function (p) { return p.role === 'admin'; });
+    main.appendChild(h('div', { class: 'card', style: 'padding:6px 22px;margin-bottom:22px' },
+      h('p', { class: 'label', style: 'margin:14px 0 4px' }, 'Admins'),
+      admins.map(function (p) {
+        return h('article', { class: 'ann', style: 'display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap' },
+          h('div', null, h('b', null, p.full_name || p.email), h('br'), h('small', { class: 'muted' }, p.email || ''), p.id === S.user.id ? h('small', { class: 'muted' }, ' · you') : null),
+          p.id === S.user.id ? null : h('button', { class: 'btn line small', type: 'button', onclick: once(function () { return setRole(p, 'student'); }) }, 'Remove admin'));
+      })));
     main.appendChild(h('div', { class: 'toolbar' }, q));
     main.appendChild(h('div', { class: 'card table-card' }, h('table', { class: 'data students' },
       h('thead', null, h('tr', null, ['Student', 'Wedding', 'Progress', 'Last active', 'Joined'].map(function (t) { return h('th', { scope: 'col' }, t); }))), tbody)));
@@ -357,7 +377,7 @@
       h('div', { class: 'sticky-actions' },
         h('div', { class: 'actions' }, saveBtn,
           h('button', { class: 'btn line', type: 'button', onclick: function () { go('lessons', { focus: true }); } }, 'Back'),
-          !isNew ? h('a', { class: 'btn ghost small', href: 'course.html?lesson=' + l.id, target: '_blank', rel: 'noopener' }, icon('eye'), 'View as student') : null),
+          !isNew ? h('a', { class: 'btn ghost small', href: 'course?lesson=' + l.id, target: '_blank', rel: 'noopener' }, icon('eye'), 'View as student') : null),
         !isNew ? h('button', { class: 'btn danger small', type: 'button', onclick: del }, 'Delete') : null),
       note);
     form.addEventListener('input', markDirty);
@@ -543,7 +563,7 @@
         })));
     }) : h('p', { class: 'empty' }, 'Nothing in the library yet. Add your first class, book or resource above.'));
 
-    main.appendChild(head('Classes, books and resources', 'Library', h('a', { class: 'btn line small', href: 'library.html', target: '_blank', rel: 'noopener' }, 'View library')));
+    main.appendChild(head('Classes, books and resources', 'Library', h('a', { class: 'btn line small', href: 'library', target: '_blank', rel: 'noopener' }, 'View library')));
     main.appendChild(h('h2', { class: 'display', style: 'font-size:18px;margin:0 0 14px' }, r0 ? 'Edit "' + r0.title + '"' : 'Add something new'));
     main.appendChild(form);
     main.appendChild(h('h2', { class: 'display', style: 'font-size:18px;margin:40px 0 14px' }, 'In the library'));
@@ -560,7 +580,7 @@
       h('p', { class: 'script' }, 'Admin only'),
       h('h1', { class: 'display' }, 'Access restricted'),
       h('p', null, 'This dashboard is for Rabbanit Rachel. Your course is waiting for you.'),
-      h('a', { class: 'btn', href: 'course.html' }, 'Go to my course'))));
+      h('a', { class: 'btn', href: 'course' }, 'Go to my course'))));
   }
 
   (async function init() {
@@ -582,7 +602,7 @@
         h('button', { class: 'btn', type: 'button', onclick: function () { location.reload(); } }, 'Try again'))));
     }
   })();
-  KC.sb.auth.onAuthStateChange(function (event) { if (event === 'SIGNED_OUT') location.replace('account.html'); });
+  KC.sb.auth.onAuthStateChange(function (event) { if (event === 'SIGNED_OUT') location.replace('account'); });
 })();
 </script>
 </body>

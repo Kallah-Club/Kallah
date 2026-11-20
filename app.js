@@ -1,4 +1,4 @@
-/* The Kallah Club: shared app code for account.html, course.html and admin.html.
+/* The Kallah Club: shared app code for account.html, course and admin.html.
  *
  * The key below is the PUBLIC (publishable) key. It is safe in the browser:
  * every table is protected by Row Level Security in Supabase, so a visitor can
@@ -175,11 +175,11 @@
   }
   /* Sends visitors without a valid session to the log-in page and back afterwards.
    * An error fragment from an email link (#error=...&error_code=otp_expired) is
-   * passed along so account.html can show the "Link expired" screen. */
+   * passed along so account can show the "Link expired" screen. */
   function toLogin() {
     var here = window.location.pathname.split('/').pop() + window.location.search;
     var frag = /(^|&)error/.test(window.location.hash.slice(1)) ? window.location.hash : '';
-    window.location.replace(pageUrl('account.html') + '?next=' + encodeURIComponent(here || 'course.html') + frag);
+    window.location.replace(pageUrl('account') + '?next=' + encodeURIComponent(here || 'course') + frag);
     return new Promise(function () {});
   }
   async function requireUser() {
@@ -211,27 +211,27 @@
   function hasContent(l) { return !!((l.body && l.body.trim()) || l.video_url); }
   async function signOut() {
     await sb.auth.signOut();
-    window.location.href = pageUrl('account.html') + '?signed_out=1';
+    window.location.href = pageUrl('account') + '?signed_out=1';
   }
   /* Only allow redirecting to our own app pages after log in. */
   function safeNext(v) {
-    if (!v) return 'course.html';
-    return /^(course|admin|account)\.html(\?[\w=&%.-]*)?$/.test(v) ? v : 'course.html';
+    if (!v) return 'course';
+    return /^(course|admin|account|library)(\.html)?(\?[\w=&%.-]*)?$/.test(v) ? v : 'course';
   }
 
-  /* Top bar shared by course.html and admin.html */
+  /* Top bar shared by course and admin */
   function topbar(opts) {
     var p = opts.profile || {};
     var links = [
-      h('a', { href: 'course.html', 'data-nav': '', class: opts.active === 'course' ? 'on' : null }, 'My course'),
-      h('a', { href: 'course.html?view=profile', 'data-nav': '', class: opts.active === 'profile' ? 'on' : null }, 'Profile'),
-      h('a', { href: 'library.html', class: opts.active === 'library' ? 'on' : null }, 'Library')
+      h('a', { href: 'course', 'data-nav': '', class: opts.active === 'course' ? 'on' : null }, 'My course'),
+      h('a', { href: 'course?view=profile', 'data-nav': '', class: opts.active === 'profile' ? 'on' : null }, 'Profile'),
+      h('a', { href: 'library', class: opts.active === 'library' ? 'on' : null }, 'Library')
     ];
-    if (p.role === 'admin') links.push(h('a', { href: 'admin.html', class: opts.active === 'admin' ? 'on' : null }, 'Dashboard'));
+    if (p.role === 'admin') links.push(h('a', { href: 'admin', class: opts.active === 'admin' ? 'on' : null }, 'Dashboard'));
     var initials = ((p.full_name || p.email || '?').trim().split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2) || '?').toUpperCase();
     var bar = h('header', { class: 'topbar' },
       h('div', { class: 'wrap topbar-in' },
-        h('a', { class: 'brand', href: 'index.html' }, h('b', null, 'The Kallah'), h('i', null, 'Club')),
+        h('a', { class: 'brand', href: './' }, h('b', null, 'The Kallah'), h('i', null, 'Club')),
         h('nav', { class: 'toplinks', 'aria-label': 'Main' }, links),
         h('div', { class: 'me' },
           h('span', { class: 'avatar', 'aria-hidden': 'true', text: initials }),

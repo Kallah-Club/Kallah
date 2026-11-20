@@ -181,6 +181,11 @@
 
   var client = {
     from: function (t) { return new Query(t); },
+    rpc: function (fn, args) {
+      var p = db.profiles.filter(function (x) { return x.id === args.target; })[0];
+      if (fn === 'set_member_role' && p) p.role = args.new_role;
+      return Promise.resolve({ data: args && args.new_role, error: null });
+    },
     auth: {
       getSession: function () { return Promise.resolve({ data: { session: session }, error: null }); },
       getUser: function () { return Promise.resolve({ data: { user: user }, error: null }); },

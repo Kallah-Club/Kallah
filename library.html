@@ -57,9 +57,9 @@
 
   function publicBar() {
     return h('header', { class: 'topbar' }, h('div', { class: 'wrap topbar-in' },
-      h('a', { class: 'brand', href: 'index.html' }, h('b', null, 'The Kallah'), h('i', null, 'Club')),
-      h('nav', { class: 'toplinks', 'aria-label': 'Main' }, h('a', { href: 'index.html' }, 'Home'), h('a', { href: 'library.html', class: 'on' }, 'Library')),
-      h('div', { class: 'me' }, h('a', { class: 'btn line small', href: 'account.html?next=course.html' }, 'Log in'))));
+      h('a', { class: 'brand', href: './' }, h('b', null, 'The Kallah'), h('i', null, 'Club')),
+      h('nav', { class: 'toplinks', 'aria-label': 'Main' }, h('a', { href: './' }, 'Home'), h('a', { href: 'library', class: 'on' }, 'Library')),
+      h('div', { class: 'me' }, h('a', { class: 'btn line small', href: 'account?next=course' }, 'Log in'))));
   }
 
   function card(r) {
@@ -100,7 +100,7 @@
       });
       if (!session) page.appendChild(h('div', { class: 'panel members-cta' },
         h('p', { class: 'script' }, 'Members'), h('p', null, 'Members see extra resources and printables here after logging in.'),
-        h('a', { class: 'btn', href: 'account.html?next=course.html', style: 'margin-top:12px' }, 'Log in or join')));
+        h('a', { class: 'btn', href: 'account?next=course', style: 'margin-top:12px' }, 'Log in or join')));
     }
     KC.clear(app).appendChild(page);
     if (location.hash) { var t = document.getElementById(location.hash.slice(1)); if (t) t.scrollIntoView(); }

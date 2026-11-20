@@ -15,8 +15,8 @@
 <div class="auth-page">
   <header>
     <div class="wrap">
-      <a class="brand" href="index.html"><b>The Kallah</b><i>Club</i></a>
-      <a class="btn line small" href="index.html">Back to site</a>
+      <a class="brand" href="./"><b>The Kallah</b><i>Club</i></a>
+      <a class="btn line small" href="./">Back to site</a>
     </div>
   </header>
 
@@ -126,7 +126,7 @@
   var inRecovery = params.get('mode') === 'reset' || hash.get('type') === 'recovery';
 
   // Confirmation links land here first, so an expired link shows the right screen.
-  var CONFIRM_URL = KC.pageUrl('account.html') + '?next=course.html';
+  var CONFIRM_URL = KC.pageUrl('account') + '?next=course';
   var TITLES = { forgot: 'Reset password', reset: 'New password' };
 
   function show(name) {
@@ -258,7 +258,7 @@
     });
     busy(f, false);
     if (r.error) { note(f, KC.friendlyError(r.error), 'err'); return; }
-    if (r.data && r.data.session) { location.replace('course.html'); return; }
+    if (r.data && r.data.session) { location.replace('course'); return; }
     var sentTo = email.value.trim();
     f.reset();
     message('Check your inbox', 'Confirm your email',
@@ -272,7 +272,7 @@
     var f = e.target, email = f.email;
     if (!validEmail(email)) { note(f, 'Enter a valid email address.', 'err'); email.focus(); return; }
     busy(f, true, 'Sending…'); note(f, '');
-    var r = await sb.auth.resetPasswordForEmail(email.value.trim(), { redirectTo: KC.pageUrl('account.html') + '?mode=reset' });
+    var r = await sb.auth.resetPasswordForEmail(email.value.trim(), { redirectTo: KC.pageUrl('account') + '?mode=reset' });
     busy(f, false);
     if (r.error && /rate limit|Failed to fetch/i.test(r.error.message || '')) { note(f, KC.friendlyError(r.error), 'err'); return; }
     message('Check your inbox', 'Reset link sent',
@@ -292,7 +292,7 @@
     busy(f, false);
     if (r.error) { note(f, KC.friendlyError(r.error), 'err'); return; }
     note(f, 'Your password has been updated. Taking you to your course…', 'ok');
-    setTimeout(function () { location.replace('course.html'); }, 1200);
+    setTimeout(function () { location.replace('course'); }, 1200);
   });
 
   sb.auth.onAuthStateChange(function (event) {

@@ -120,7 +120,7 @@
     var days = KC.daysUntil(state.profile.wedding_date);
     if (days !== null && days > 0) chips.push(h('span', { class: 'chip' }, icon('heart'), days + (days === 1 ? ' day' : ' days') + ' until your wedding'));
     else if (days === 0) chips.push(h('span', { class: 'chip' }, icon('heart'), 'Mazal tov! Today is your wedding day'));
-    else if (days === null) chips.push(h('a', { class: 'chip', href: 'course.html?view=profile', 'data-nav': '' }, icon('heart'), 'Add your wedding date'));
+    else if (days === null) chips.push(h('a', { class: 'chip', href: 'course?view=profile', 'data-nav': '' }, icon('heart'), 'Add your wedding date'));
     chips.push(h('span', { class: 'chip' }, icon('check'), st.total ? st.done + ' of ' + st.total + ' lessons complete' : 'Lessons open soon'));
 
     var hello = h('section', { class: 'panel hello' },
@@ -138,7 +138,7 @@
     var contCard;
     if (cont) {
       var l = cont.lesson;
-      contCard = h('a', { class: 'card continue', href: 'course.html?lesson=' + l.id, 'data-nav': '' },
+      contCard = h('a', { class: 'card continue', href: 'course?lesson=' + l.id, 'data-nav': '' },
         h('span', { class: 'bignum' }, num(l)),
         h('div', null,
           h('p', { class: 'eyebrow' }, cont.resume ? 'Continue where you left off' : st.done ? 'Up next' : 'Start here'),
@@ -177,7 +177,7 @@
               l.summary ? h('p', null, l.summary) : null),
             statusDot(l)];
           return ready(l)
-            ? h('a', { class: 'lrow', href: 'course.html?lesson=' + l.id, 'data-nav': '' }, inner)
+            ? h('a', { class: 'lrow', href: 'course?lesson=' + l.id, 'data-nav': '' }, inner)
             : h('div', { class: 'lrow locked' }, inner);
         })));
     }));
@@ -206,7 +206,7 @@
       p.lessons.forEach(function (l) {
         var kids = [statusDot(l), h('span', null, num(l) + '  ' + l.title)];
         details.appendChild(ready(l)
-          ? h('a', { href: 'course.html?lesson=' + l.id, 'data-nav': '', class: l.id === current.id ? 'on' : null, 'aria-current': l.id === current.id ? 'page' : null }, kids)
+          ? h('a', { href: 'course?lesson=' + l.id, 'data-nav': '', class: l.id === current.id ? 'on' : null, 'aria-current': l.id === current.id ? 'page' : null }, kids)
           : h('a', { class: 'is-soon' + (l.id === current.id ? ' on' : ''), 'aria-disabled': 'true', style: 'opacity:.65;cursor:default' }, kids));
       });
     });
@@ -221,7 +221,7 @@
       KC.clear(app).appendChild(h('div', { class: 'wrap page' }, h('div', { class: 'panel denied' },
         h('p', { class: 'script' }, 'Not found'), h('h1', { class: 'display' }, 'Lesson unavailable'),
         h('p', null, 'This lesson is not available yet. It may still be in preparation.'),
-        h('a', { class: 'btn', href: 'course.html', 'data-nav': '' }, 'Back to my course'))));
+        h('a', { class: 'btn', href: 'course', 'data-nav': '' }, 'Back to my course'))));
       return;
     }
     // Previous / next only step through lessons that are open.
@@ -247,13 +247,13 @@
     function paintActions(focusSel) {
       KC.clear(actions);
       if (!ready(l)) {
-        actions.appendChild(h('a', { class: 'btn line', href: 'course.html', 'data-nav': '' }, icon('arrowL'), 'Back to course'));
+        actions.appendChild(h('a', { class: 'btn line', href: 'course', 'data-nav': '' }, icon('arrowL'), 'Back to course'));
         return;
       }
       if (isDone(l.id)) {
         actions.appendChild(h('span', { class: 'btn done', role: 'status' }, icon('check'), 'Completed'));
         actions.appendChild(h('button', { class: 'linkbtn', type: 'button', id: 'undo-complete', onclick: undo }, 'Mark as not complete'));
-        if (next) actions.appendChild(h('a', { class: 'btn line', href: 'course.html?lesson=' + next.id, 'data-nav': '' }, 'Next lesson', icon('arrowR')));
+        if (next) actions.appendChild(h('a', { class: 'btn line', href: 'course?lesson=' + next.id, 'data-nav': '' }, 'Next lesson', icon('arrowR')));
       } else {
         actions.appendChild(h('button', { class: 'btn', type: 'button', id: 'complete', onclick: complete },
           next ? 'Complete & continue' : 'Complete course', icon(next ? 'arrowR' : 'check')));
@@ -271,7 +271,7 @@
         await setComplete(l, true);
         var st = stats();
         KC.toast(st.done === st.total && !st.soon ? 'Mazal tov! You have completed the whole course.' : 'Lesson ' + num(l) + ' complete. Beautiful work!');
-        navigate(next ? 'course.html?lesson=' + next.id : 'course.html');
+        navigate(next ? 'course?lesson=' + next.id : 'course');
       } catch (e) {
         KC.toast(KC.friendlyError(e), 'err');
         if (btn) btn.removeAttribute('aria-busy');
@@ -294,7 +294,7 @@
     paintActions();
 
     var main = h('article', null,
-      h('a', { class: 'back', href: 'course.html', 'data-nav': '' }, icon('arrowL'), 'All lessons'),
+      h('a', { class: 'back', href: 'course', 'data-nav': '' }, icon('arrowL'), 'All lessons'),
       h('header', { class: 'lesson-head' },
         h('span', { class: 'bignum', 'aria-hidden': 'true' }, num(l)),
         h('div', null,
@@ -305,8 +305,8 @@
       body,
       actions,
       (prev || next) ? h('nav', { class: 'pager', 'aria-label': 'Lesson navigation' },
-        prev ? h('a', { href: 'course.html?lesson=' + prev.id, 'data-nav': '' }, h('span', null, 'Previous · ' + num(prev)), h('b', null, prev.title)) : null,
-        next ? h('a', { class: 'next', href: 'course.html?lesson=' + next.id, 'data-nav': '' }, h('span', null, 'Next · ' + num(next)), h('b', null, next.title)) : null) : null);
+        prev ? h('a', { href: 'course?lesson=' + prev.id, 'data-nav': '' }, h('span', null, 'Previous · ' + num(prev)), h('b', null, prev.title)) : null,
+        next ? h('a', { class: 'next', href: 'course?lesson=' + next.id, 'data-nav': '' }, h('span', null, 'Next · ' + num(next)), h('b', null, next.title)) : null) : null);
 
     KC.clear(app).appendChild(h('div', { class: 'wrap page' }, h('div', { class: 'lesson-layout' }, main, outline(l))));
   }
@@ -415,7 +415,7 @@
     window.scrollTo(0, (e.state && e.state.y) || 0);
     focusHeading();
   });
-  sb.auth.onAuthStateChange(function (event) { if (event === 'SIGNED_OUT') location.replace('account.html'); });
+  sb.auth.onAuthStateChange(function (event) { if (event === 'SIGNED_OUT') location.replace('account'); });
 
   load().then(function () { route(); window.scrollTo(0, 0); }).catch(function (err) {
     console.error(err);
